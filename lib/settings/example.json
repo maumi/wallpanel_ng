@@ -1,0 +1,9 @@
+{
+    "darkmode": true,
+    "mqtthost": "192.168.1.1",
+    "mqttport": 1883,
+    "mqttsensortopic": "wallpanel/sensor",
+    "mqttsensorinterval": 60,
+    "mqttsensorpublish": true,
+    "url": "http://google.com"
+}
