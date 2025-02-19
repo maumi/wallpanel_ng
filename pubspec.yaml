@@ -40,6 +40,16 @@ dependencies:
   shared_preferences: ^2.5.1
   battery_plus: ^6.2.1
   mqtt_client: ^10.5.1
+  talker_flutter: ^4.6.10
+  gap: ^3.0.1
+  equatable: ^2.0.7
+  flutter_riverpod: ^2.6.1
+  riverpod_annotation: ^2.6.1
+  json_annotation: ^4.9.0
+  android_intent_plus: ^5.3.0
+  android_alarm_manager_plus: ^4.0.6
+  alarm: ^5.0.2
+  screen_state: ^4.1.1
 
 dev_dependencies:
   flutter_test:
@@ -51,6 +61,11 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^5.0.0
+  riverpod_generator: ^2.6.4
+  build_runner: ^2.4.14
+  custom_lint: ^0.7.3
+  riverpod_lint: ^2.6.4
+  json_serializable: ^6.9.3
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -62,6 +77,8 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+  assets:
+    - assets/marimba.mp3
 
   # To add assets to your application, add an assets section, like this:
   # assets:
