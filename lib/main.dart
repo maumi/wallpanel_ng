@@ -1,19 +1,17 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:alarm/alarm.dart';
-import 'package:alarm/model/volume_settings.dart';
-import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
+import 'package:android_wake_lock/android_wake_lock.dart';
 import 'package:battery_plus/battery_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:mqtt_client/mqtt_client.dart';
-import 'package:mqtt_client/mqtt_server_client.dart';
+import 'package:mqtt5_client/mqtt5_client.dart';
+import 'package:mqtt5_client/mqtt5_server_client.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:wallpanel_ng/globals.dart';
 import 'package:wallpanel_ng/model/settingsmodel.dart';
 import 'package:wallpanel_ng/pages/settings.dart';
 import 'package:webview_flutter/webview_flutter.dart';
-import 'package:screen_state/screen_state.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -63,17 +61,15 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   MqttServerClient? _mqttClient;
-  MqttClientPayloadBuilder? _mqttClientPayloadBuilder;
+  MqttPayloadBuilder? _mqttClientPayloadBuilder;
   Timer? _publishTimer;
   String? _subscribedTopic;
   WebViewController _webViewController = WebViewController();
-  final Screen _screen = Screen();
-  ScreenStateEvent? _screenStateEvent;
+  StreamSubscription? _streamSubscription;
 
   @override
   void initState() {
     talker.verbose("Init App");
-    AndroidAlarmManager.initialize();
     widget.settings.notiUrl.addListener(() {
       if (widget.settings.notiUrl.value.isNotEmpty) {
         setState(() {
@@ -88,17 +84,15 @@ class _MyHomePageState extends State<MyHomePage> {
     widget.settings.notiMqttHost.addListener(
       () {
         if (widget.settings.notiMqttHost.value.isNotEmpty) {
-          setState(() {
-            changeMqttConnection();
-          });
+          talker.debug("Again Setup mqtt because host changed");
+          setupMqtt();
         }
       },
     );
     widget.settings.notiMqttPort.addListener(
       () {
-        setState(() {
-          changeMqttConnection();
-        });
+        talker.debug("Again Setup mqtt because port changed");
+        setupMqtt();
       },
     );
     widget.settings.notiMqttTopic.addListener(
@@ -112,6 +106,11 @@ class _MyHomePageState extends State<MyHomePage> {
     widget.settings.notiMqttInterval.addListener(
       () {
         changePublishInterval();
+      },
+    );
+    widget.settings.notiSaved.addListener(
+      () {
+        talker.debug("Saved. For test change mqtt Connection");
       },
     );
     widget.settings.notiMqttPublish.addListener(() {
@@ -130,7 +129,6 @@ class _MyHomePageState extends State<MyHomePage> {
         _publishTimer?.cancel();
       }
     });
-    _screen.screenStateStream.listen(onData);
     initAsync();
     super.initState();
   }
@@ -142,7 +140,6 @@ class _MyHomePageState extends State<MyHomePage> {
     }
     await setupMqtt();
     WidgetsFlutterBinding.ensureInitialized();
-    await Alarm.init();
     if (widget.settings.mqttsensorpublish == true) {
       _publishTimer?.cancel();
       _publishTimer = null;
@@ -177,12 +174,6 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-  void onData(ScreenStateEvent event) {
-    setState(() {
-      _screenStateEvent = event;
-    });
-  }
-
   void changePublishInterval() {
     _publishTimer?.cancel();
     _publishTimer = null;
@@ -203,7 +194,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Future<void> publishBatteryState() async {
     var batteryLevel = await getBatteryLevel();
-    var bPub = await publishMessage(batteryLevel.toString());
+    var bPub = await publishMessage("battery", batteryLevel.toString());
     talker.verbose("Publish successful: $bPub");
   }
 
@@ -230,39 +221,57 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void setMqttClientBuilder() {
-    var builder = MqttClientPayloadBuilder();
+    if (_mqttClientPayloadBuilder == null) {
+      var builder = MqttPayloadBuilder();
 
-    setState(() {
-      _mqttClientPayloadBuilder = builder;
-    });
+      setState(() {
+        _mqttClientPayloadBuilder = builder;
+      });
+    }
   }
 
-  void subscribeMqtt() {
+  Future<void> subscribeMqtt() async {
     try {
-      if (_mqttClient != null && _mqttClient!.updates != null) {
+      if (_mqttClient != null) {
         talker.debug("Should be able to listen to mqtt topics");
       } else {
         talker.debug(
             "Should not be able to listen to mqtt topics. Client: $_mqttClient, updates: ${_mqttClient?.updates}");
       }
-      _mqttClient?.updates
-          ?.listen((List<MqttReceivedMessage<MqttMessage?>>? c) {
+      await _streamSubscription?.cancel();
+      _streamSubscription = _mqttClient?.updates
+          .listen((List<MqttReceivedMessage<MqttMessage?>>? c) async {
         talker.debug("Received mqtt Message: ${c?[0].payload}");
 
-        final recMess = c![0].payload as MqttPublishMessage;
+        await publishMessage("pong",
+            "${DateTime.now().minute.toString()}${DateTime.now().second.toString()}");
+
+        if (c == null || c[0].topic == null) {
+          return;
+        }
+
+        final recMess = c[0].payload as MqttPublishMessage;
         final pt =
-            MqttPublishPayload.bytesToStringAsString(recMess.payload.message);
-        if (c[0].topic.endsWith("/command")) {
+            MqttUtilities.bytesToStringAsString(recMess.payload.message!);
+        if (c[0].topic!.endsWith("/command")) {
           talker.verbose("Found topic with command at the end");
-          var jPayload = jsonDecode(pt);
-          talker.verbose("After json decode $jPayload");
           try {
+            var jPayload = jsonDecode(pt);
+            talker.verbose("After json decode $jPayload");
+
             var bWake = jPayload["wake"];
             talker.verbose("bWake is: $bWake");
             if (bWake) {
-              wakeupIntent();
+              int wakeTime = 60;
+              try {
+                wakeTime = jPayload["wakeTime"];
+              } catch (e) {
+                talker.debug(
+                    "waketime not specified. Using default of 60 seconds");
+              }
+              wakeupIntent(wakeTime);
             } else {
-              // disableWakeLock();
+              disableWakeLock();
             }
           } catch (e) {
             talker.warning("Wrong command");
@@ -292,9 +301,11 @@ class _MyHomePageState extends State<MyHomePage> {
         widget.settings.mqttsensortopic = settings.mqttsensortopic;
         widget.settings.notiDarkmode.value = settings.darkmode ?? false;
         widget.settings.notiMqttHost.value = settings.mqtthost ?? "";
-        widget.settings.notiMqttInterval.value = settings.mqttsensorinterval ?? 60;
+        widget.settings.notiMqttInterval.value =
+            settings.mqttsensorinterval ?? 60;
         widget.settings.notiMqttPort.value = settings.mqttport ?? 1883;
-        widget.settings.notiMqttPublish.value = settings.mqttsensorpublish ?? false;
+        widget.settings.notiMqttPublish.value =
+            settings.mqttsensorpublish ?? false;
         widget.settings.notiMqttTopic.value = settings.mqttsensortopic ?? "";
         widget.settings.notiUrl.value = settings.url ?? "http://google.com";
       });
@@ -304,24 +315,50 @@ class _MyHomePageState extends State<MyHomePage> {
   Future<void> setupMqtt() async {
     await connectMqtt();
     setMqttClientBuilder();
-    subscribeMqtt();
+    await subscribeMqtt();
     if (widget.settings.mqttsensortopic != null) {
       subscribeTopic(widget.settings.mqttsensortopic!);
     }
-    await changeMqttConnection();
   }
 
   Future<void> connectMqtt() async {
     if (widget.settings.mqtthost != null) {
       var mqttClient = MqttServerClient.withPort(widget.settings.mqtthost!,
-          'myClient', widget.settings.mqttport ?? 1883);
+          widget.settings.mqttclientidentifier ?? 'myClientId', widget.settings.mqttport ?? 1883);
       mqttClient.keepAlivePeriod = 86400;
-      var mqttStatus = await mqttClient.connect('myClientId');
+      mqttClient.autoReconnect = true;
+      mqttClient.onSubscribed = onSubscribed;
+      mqttClient.onConnected = onConnected;
+      mqttClient.onAutoReconnect = onAutoReconnect;
+      mqttClient.onDisconnected = onDisconnected;
+      mqttClient.onUnsubscribed = onUnSubscribed;
+      var mqttStatus = await mqttClient.connect();
       talker.debug("Connected to MQTT Server with state: $mqttStatus");
+      _mqttClient?.disconnect();
       setState(() {
         _mqttClient = mqttClient;
       });
     }
+  }
+
+  void onSubscribed(MqttSubscription topic) {
+    talker.debug('Subscription confirmed for topic $topic');
+  }
+
+  void onUnSubscribed(MqttSubscription topic) {
+    talker.debug('Unsubscribed for topic $topic');
+  }
+
+  void onConnected() {
+    talker.debug('Connected');
+  }
+
+  void onAutoReconnect() {
+    talker.debug('Auto Reconnect');
+  }
+
+  void onDisconnected() {
+    talker.debug('Disconnected');
   }
 
   Future<void> changeMqttConnection() async {
@@ -334,10 +371,10 @@ class _MyHomePageState extends State<MyHomePage> {
           widget.settings.mqttport != null) {
         var mqttClient = MqttServerClient.withPort(
             widget.settings.notiMqttHost.value,
-            'myClient',
+            widget.settings.notiMqttClientIdentifier.value,
             widget.settings.notiMqttPort.value);
         mqttClient.keepAlivePeriod = 86400;
-        await mqttClient.connect('myClientId');
+        await mqttClient.connect();
         setState(() {
           _mqttClient = mqttClient;
         });
@@ -367,27 +404,28 @@ class _MyHomePageState extends State<MyHomePage> {
         _mqttClient != null &&
         _mqttClient?.connectionStatus?.state == MqttConnectionState.connected) {
       try {
-        _mqttClient!.unsubscribe(_subscribedTopic!);
+        _mqttClient!.unsubscribeStringTopic(_subscribedTopic!);
       } catch (e) {
         talker.error("unSubscribeOldTopic: $e");
       }
     }
   }
 
-  Future<bool> publishMessage(String payload) async {
+  Future<bool> publishMessage(String subtopic, String payload) async {
     var bRet = false;
     if (widget.settings.mqttsensortopic != null) {
       try {
         _mqttClientPayloadBuilder?.clear();
         _mqttClientPayloadBuilder?.addString(payload);
-        if (_mqttClientPayloadBuilder?.payload != null) {
+        if (_mqttClientPayloadBuilder?.payload != null &&
+            widget.settings.mqttsensortopic != null) {
           if (_mqttClient?.connectionStatus?.state !=
               MqttConnectionState.connected) {
-            talker.debug("Reconnect Mqtt");
-            await changeMqttConnection();
+            talker.debug("(Not) Reconnect Mqtt");
+            //await setupMqtt();
           }
           var iMqttId = _mqttClient?.publishMessage(
-              widget.settings.mqttsensortopic!,
+              "${widget.settings.mqttsensortopic!}/$subtopic",
               MqttQos.exactlyOnce,
               _mqttClientPayloadBuilder!.payload!);
           talker.verbose("published message $iMqttId");
@@ -400,37 +438,21 @@ class _MyHomePageState extends State<MyHomePage> {
     return bRet;
   }
 
-  Future<void> wakeupIntent() async {
+  Future<void> wakeupIntent(int wakeTime) async {
     talker.verbose("Before alarm");
-    try {
-      final alarmSettings = AlarmSettings(
-        id: 42,
-        dateTime: DateTime.now(),
-        assetAudioPath: 'assets/marimba.mp3',
-        // loopAudio: true,
-        // vibrate: true,
-        warningNotificationOnKill: true,
-        androidFullScreenIntent: true,
-        volumeSettings: VolumeSettings.fixed(
-          volume: 0.0,
-          volumeEnforced: true,
-        ),
-        notificationSettings: const NotificationSettings(
-          title: 'This is the title',
-          body: 'This is the body',
-          stopButton: 'Stop the alarm',
-          icon: 'notification_icon',
-        ),
-      );
-      if (_screenStateEvent == ScreenStateEvent.SCREEN_OFF) {
-        talker.debug("Wakeup Screen");
-        await Alarm.set(alarmSettings: alarmSettings);
-      } else {
-        talker.debug("Not waking up because screen is on already");
-      }
-      talker.verbose("After Alarm fired");
-    } catch (e) {
-      talker.warning("wakeupIntent $e");
-    }
+    AndroidWakeLock.wakeUp();
+    WakelockPlus.enable();
+    await _webViewController.reload();
+    // wakeLockTimer = Timer(Duration(seconds: wakeTime), () {
+    //   WakelockPlus.disable();
+    // });
+    Future.delayed(Duration(seconds: wakeTime), () {
+      WakelockPlus.disable();
+    });
+  }
+
+  Future<void> disableWakeLock() async {
+    talker.verbose("Disable WakeLock");
+    WakelockPlus.disable();
   }
 }

@@ -20,6 +20,7 @@ class _SettingsPageState extends State<SettingsPage> {
   final TextEditingController _mqttHostController = TextEditingController();
   final TextEditingController _mqttPortController = TextEditingController();
   final TextEditingController _mqttTopicController = TextEditingController();
+  final TextEditingController _mqttidentifierController = TextEditingController();
   final TextEditingController _mqttIntervalController = TextEditingController();
   final TextEditingController _urlController = TextEditingController();
 
@@ -34,6 +35,8 @@ class _SettingsPageState extends State<SettingsPage> {
     });
     _mqttTopicController.addListener(
         () => widget.settings.mqttsensortopic = _mqttTopicController.text);
+            _mqttidentifierController.addListener(
+        () => widget.settings.mqttclientidentifier = _mqttidentifierController.text);
     _mqttIntervalController.addListener(() {
       var iInterval = int.tryParse(_mqttIntervalController.text);
       widget.settings.mqttsensorinterval = iInterval;
@@ -137,6 +140,19 @@ class _SettingsPageState extends State<SettingsPage> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
+                      const Text("MQTT Client Identifier"),
+                      SizedBox(
+                        width: MediaQuery.sizeOf(context).width * 0.7,
+                        child: TextField(
+                          textAlign: TextAlign.right,
+                          controller: _mqttidentifierController,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
                       const Text("MQTT Sensor Publish Interval (s)"),
                       SizedBox(
                         width: MediaQuery.sizeOf(context).width * 0.7,
@@ -200,6 +216,9 @@ class _SettingsPageState extends State<SettingsPage> {
     var prefs = SharedPreferencesAsync();
     var sSettings = jsonEncode(widget.settings.toJson());
     await prefs.setString("settings", sSettings);
+    setState(() {
+      widget.settings.notiSaved.value = true;
+    });
     if (widget.settings.url != null &&
         Uri.tryParse(widget.settings.url!) != null) {
       setState(() {
@@ -236,6 +255,13 @@ class _SettingsPageState extends State<SettingsPage> {
             widget.settings.mqttsensortopic ?? "";
       });
     }
+    if (widget.settings.notiMqttClientIdentifier.value !=
+        widget.settings.mqttclientidentifier) {
+      setState(() {
+        widget.settings.notiMqttClientIdentifier.value =
+            widget.settings.mqttclientidentifier ?? "";
+      });
+    }
     if (widget.settings.notiMqttPublish.value !=
         widget.settings.mqttsensorpublish) {
       setState(() {
@@ -255,6 +281,7 @@ class _SettingsPageState extends State<SettingsPage> {
         _mqttHostController.text = settings.mqtthost ?? "";
         _mqttPortController.text = settings.mqttport?.toString() ?? "1883";
         _mqttTopicController.text = settings.mqttsensortopic ?? "";
+        _mqttidentifierController.text = settings.mqttclientidentifier ?? "";
         _mqttIntervalController.text =
             settings.mqttsensorinterval?.toString() ?? "60";
         _urlController.text = settings.url ?? "";
