@@ -66,6 +66,7 @@ class _MyHomePageState extends State<MyHomePage> {
   String? _subscribedTopic;
   WebViewController _webViewController = WebViewController();
   StreamSubscription? _streamSubscription;
+  double dragStartY = 0;
 
   @override
   void initState() {
@@ -85,22 +86,22 @@ class _MyHomePageState extends State<MyHomePage> {
       () {
         if (widget.settings.notiMqttHost.value.isNotEmpty) {
           talker.debug("Again Setup mqtt because host changed");
-          setupMqtt();
+          // setupMqtt();
         }
       },
     );
     widget.settings.notiMqttPort.addListener(
       () {
         talker.debug("Again Setup mqtt because port changed");
-        setupMqtt();
+        // setupMqtt();
       },
     );
     widget.settings.notiMqttTopic.addListener(
       () {
-        setState(() {
-          unSubscribeOldTopic();
-          subscribeTopic(widget.settings.notiMqttTopic.value);
-        });
+        // setState(() {
+        //   unSubscribeOldTopic();
+        //   subscribeTopic(widget.settings.notiMqttTopic.value);
+        // });
       },
     );
     widget.settings.notiMqttInterval.addListener(
@@ -158,7 +159,18 @@ class _MyHomePageState extends State<MyHomePage> {
       body: ValueListenableBuilder(
         valueListenable: widget.settings.notiUrl,
         builder: (BuildContext context, value, Widget? child) {
-          return WebViewWidget(controller: _webViewController);
+          return GestureDetector(
+              onVerticalDragEnd: (details) {
+                if (dragStartY < 100 &&
+                    details.localPosition.dy - dragStartY > 100) {
+                  talker.debug("Refresh page");
+                  _webViewController.reload();
+                }
+              },
+              onVerticalDragStart: (details) {
+                dragStartY = details.localPosition.dy;
+              },
+              child: WebViewWidget(controller: _webViewController));
         },
       ),
       floatingActionButton: FloatingActionButton(
@@ -308,6 +320,8 @@ class _MyHomePageState extends State<MyHomePage> {
             settings.mqttsensorpublish ?? false;
         widget.settings.notiMqttTopic.value = settings.mqttsensortopic ?? "";
         widget.settings.notiUrl.value = settings.url ?? "http://google.com";
+        widget.settings.mqttautoreconnect = settings.mqttautoreconnect;
+        widget.settings.mqttclientidentifier = settings.mqttclientidentifier;
       });
     }
   }
@@ -323,8 +337,10 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Future<void> connectMqtt() async {
     if (widget.settings.mqtthost != null) {
-      var mqttClient = MqttServerClient.withPort(widget.settings.mqtthost!,
-          widget.settings.mqttclientidentifier ?? 'myClientId', widget.settings.mqttport ?? 1883);
+      var mqttClient = MqttServerClient.withPort(
+          widget.settings.mqtthost!,
+          widget.settings.mqttclientidentifier ?? 'myClientId',
+          widget.settings.mqttport ?? 1883);
       mqttClient.keepAlivePeriod = 86400;
       mqttClient.autoReconnect = true;
       mqttClient.onSubscribed = onSubscribed;
@@ -332,8 +348,11 @@ class _MyHomePageState extends State<MyHomePage> {
       mqttClient.onAutoReconnect = onAutoReconnect;
       mqttClient.onDisconnected = onDisconnected;
       mqttClient.onUnsubscribed = onUnSubscribed;
+      mqttClient.onFailedConnectionAttempt = onFailedConnectionAttempt;
+      mqttClient.onSubscribeFail = onSubscribeFail;
       var mqttStatus = await mqttClient.connect();
-      talker.debug("Connected to MQTT Server with state: $mqttStatus");
+      talker.debug(
+          "Connected to MQTT Server with state: $mqttStatus and identifier: ${widget.settings.mqttclientidentifier ?? "myClient"}");
       _mqttClient?.disconnect();
       setState(() {
         _mqttClient = mqttClient;
@@ -361,6 +380,14 @@ class _MyHomePageState extends State<MyHomePage> {
     talker.debug('Disconnected');
   }
 
+  void onSubscribeFail(MqttSubscription mqttSub) {
+    talker.debug('Subscription failed: ${mqttSub.topic}');
+  }
+
+  void onFailedConnectionAttempt(int attempt) {
+    talker.debug('FailedConnectionAttempt: $attempt');
+  }
+
   Future<void> changeMqttConnection() async {
     try {
       if (_mqttClient?.connectionStatus?.state ==
@@ -374,7 +401,9 @@ class _MyHomePageState extends State<MyHomePage> {
             widget.settings.notiMqttClientIdentifier.value,
             widget.settings.notiMqttPort.value);
         mqttClient.keepAlivePeriod = 86400;
-        await mqttClient.connect();
+        var mqttStatus = await mqttClient.connect();
+        talker.debug(
+            "Connected to MQTT Server with state: $mqttStatus and identifier: ${widget.settings.mqttclientidentifier ?? "myClient"}");
         setState(() {
           _mqttClient = mqttClient;
         });
@@ -442,10 +471,7 @@ class _MyHomePageState extends State<MyHomePage> {
     talker.verbose("Before alarm");
     AndroidWakeLock.wakeUp();
     WakelockPlus.enable();
-    await _webViewController.reload();
-    // wakeLockTimer = Timer(Duration(seconds: wakeTime), () {
-    //   WakelockPlus.disable();
-    // });
+    // await _webViewController.reload();
     Future.delayed(Duration(seconds: wakeTime), () {
       WakelockPlus.disable();
     });

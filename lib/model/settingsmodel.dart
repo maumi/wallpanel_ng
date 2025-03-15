@@ -9,6 +9,7 @@ class SettingsModel {
         this.mqttclientidentifier,
         this.mqttsensorinterval,
         this.mqttsensorpublish,
+        this.mqttautoreconnect,
         this.url
     });
 
@@ -19,6 +20,7 @@ class SettingsModel {
     String? mqttclientidentifier;
     int? mqttsensorinterval;
     bool? mqttsensorpublish;
+    bool? mqttautoreconnect;
     String? url;
     final ValueNotifier<String> notiUrl = ValueNotifier<String>("");
     final ValueNotifier<bool> notiDarkmode = ValueNotifier<bool>(false);
@@ -39,6 +41,7 @@ class SettingsModel {
             mqttclientidentifier: json["mqttclientidentifier"],
             mqttsensorinterval: json["mqttsensorinterval"],
             mqttsensorpublish: json["mqttsensorpublish"],
+            mqttautoreconnect: json["mqttautoreconnect"],
             url: json["url"],
         );
     }
@@ -51,11 +54,12 @@ class SettingsModel {
         "mqttclientidentifier": mqttclientidentifier,
         "mqttsensorinterval": mqttsensorinterval,
         "mqttsensorpublish": mqttsensorpublish,
+        "mqttautoreconnect": mqttautoreconnect,
         "url": url,
     };
 
     @override
     String toString(){
-        return "$darkmode, $mqtthost, $mqttport, $mqttsensortopic, $mqttclientidentifier, $mqttsensorinterval, $mqttsensorpublish, $url, ";
+        return "$darkmode, $mqtthost, $mqttport, $mqttsensortopic, $mqttclientidentifier, $mqttsensorinterval, $mqttsensorpublish, $mqttautoreconnect, $url, ";
     }
 }

@@ -179,6 +179,19 @@ class _SettingsPageState extends State<SettingsPage> {
                           }),
                     ],
                   ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text("MQTT Auto Reconnect"),
+                      Checkbox(
+                          value: widget.settings.mqttautoreconnect ?? true,
+                          onChanged: (value) {
+                            setState(() {
+                              widget.settings.mqttautoreconnect = value;
+                            });
+                          }),
+                    ],
+                  ),
                 ],
               ),
             ),
