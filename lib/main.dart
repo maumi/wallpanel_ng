@@ -254,8 +254,7 @@ class _MyHomePageState extends State<MyHomePage> {
       ..setNavigationDelegate(
         NavigationDelegate(
           onProgress: (int progress) {
-            // talker.debug("Progress $progress");
-            // Update loading bar.
+            // TODO: Add Progress Bar, maybe CircProgressIndicator
           },
           onPageStarted: (String url) {
             talker.debug("PageStarted: $url");
