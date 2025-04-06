@@ -4,14 +4,17 @@ import 'package:android_wake_lock/android_wake_lock.dart';
 import 'package:battery_plus/battery_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:mqtt5_client/mqtt5_client.dart';
-import 'package:mqtt5_client/mqtt5_server_client.dart';
+import 'package:gap/gap.dart';
+import 'package:mqtt_client/mqtt_client.dart';
+import 'package:mqtt_client/mqtt_server_client.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:wallpanel_ng/globals.dart';
 import 'package:wallpanel_ng/model/settingsmodel.dart';
 import 'package:wallpanel_ng/pages/settings.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:system_info3/system_info3.dart';
+import 'package:system_resources_2/system_resources_2.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -61,22 +64,35 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   MqttServerClient? _mqttClient;
-  MqttPayloadBuilder? _mqttClientPayloadBuilder;
+  MqttClientPayloadBuilder? _mqttClientPayloadBuilder;
   Timer? _publishTimer;
   String? _subscribedTopic;
   WebViewController _webViewController = WebViewController();
   StreamSubscription? _streamSubscription;
   double dragStartY = 0;
+  final int megaByte = 1024 * 1024;
 
   @override
   void initState() {
     talker.verbose("Init App");
     widget.settings.notiUrl.addListener(() {
       if (widget.settings.notiUrl.value.isNotEmpty) {
-        setState(() {
-          _webViewController.setJavaScriptMode(JavaScriptMode.unrestricted);
-          _webViewController
-              .loadRequest(Uri.parse(widget.settings.notiUrl.value));
+        _webViewController.setJavaScriptMode(JavaScriptMode.unrestricted);
+        _webViewController
+            .loadRequest(Uri.parse(widget.settings.notiUrl.value));
+        _webViewController
+            .setOnConsoleMessage((JavaScriptConsoleMessage consoleMessage) {
+          if (consoleMessage.level == JavaScriptLogLevel.debug) {
+            talker.debug(consoleMessage.message);
+          } else if (consoleMessage.level == JavaScriptLogLevel.warning) {
+            talker.warning(consoleMessage.message);
+          } else if (consoleMessage.level == JavaScriptLogLevel.error) {
+            talker.error(consoleMessage.message);
+          } else if (consoleMessage.level == JavaScriptLogLevel.info) {
+            talker.info(consoleMessage.message);
+          } else if (consoleMessage.level == JavaScriptLogLevel.log) {
+            talker.log(consoleMessage.message);
+          }
         });
       }
       talker.debug(
@@ -160,28 +176,49 @@ class _MyHomePageState extends State<MyHomePage> {
         valueListenable: widget.settings.notiUrl,
         builder: (BuildContext context, value, Widget? child) {
           return GestureDetector(
-              onVerticalDragEnd: (details) {
-                if (dragStartY < 100 &&
-                    details.localPosition.dy - dragStartY > 100) {
-                  talker.debug("Refresh page");
-                  _webViewController.reload();
-                }
-              },
-              onVerticalDragStart: (details) {
-                dragStartY = details.localPosition.dy;
-              },
-              child: WebViewWidget(controller: _webViewController));
-        },
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-                builder: (context) => SettingsPage(settings: widget.settings)),
+            onVerticalDragEnd: (details) {
+              if (dragStartY < 100 &&
+                  details.localPosition.dy - dragStartY > 100) {
+                talker.debug("Refresh page");
+                _webViewController.reload();
+              }
+            },
+            onVerticalDragStart: (details) {
+              dragStartY = details.localPosition.dy;
+            },
+            child: WebViewWidget(controller: _webViewController),
           );
         },
-        child: const Icon(Icons.settings),
+      ),
+      floatingActionButton: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          FloatingActionButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (context) =>
+                        SettingsPage(settings: widget.settings)),
+              );
+            },
+            child: const Icon(Icons.settings),
+          ),
+          const Gap(10),
+          FloatingActionButton(
+            onPressed: () async {
+              talker.debug("Reload WebView");
+              talker.debug(
+                  'Free physical memory    : ${SysInfo.getFreePhysicalMemory() ~/ megaByte} MB');
+              talker.debug(
+                  'Available physical memory: ${SysInfo.getAvailablePhysicalMemory() ~/ megaByte} MB');
+
+              talker.debug("Now really reload");
+              await _webViewController.reload();
+            },
+            child: const Icon(Icons.replay_outlined),
+          ),
+        ],
       ),
     );
   }
@@ -217,12 +254,27 @@ class _MyHomePageState extends State<MyHomePage> {
       ..setNavigationDelegate(
         NavigationDelegate(
           onProgress: (int progress) {
+            // talker.debug("Progress $progress");
             // Update loading bar.
           },
-          onPageStarted: (String url) {},
-          onPageFinished: (String url) {},
-          onHttpError: (HttpResponseError error) {},
-          onWebResourceError: (WebResourceError error) {},
+          onPageStarted: (String url) {
+            talker.debug("PageStarted: $url");
+          },
+          onPageFinished: (String url) {
+            talker.debug("PageFinished: $url");
+          },
+          onHttpError: (HttpResponseError error) {
+            talker.debug("Http Error: Response: ${error.response?.statusCode}");
+          },
+          onWebResourceError: (WebResourceError error) {
+            talker.debug("WebRessource Error: $error");
+          },
+          onHttpAuthRequest: (request) => {talker.debug("Auth Request")},
+          onUrlChange: (change) {
+            talker.debug("UrlChange ${change.url}");
+            talker.debug(
+                'CPU Load Average : ${(SystemResources.cpuLoadAvg() * 100).toInt()}%');
+          },
         ),
       )
       ..loadRequest(Uri.parse(requestUrl));
@@ -234,7 +286,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   void setMqttClientBuilder() {
     if (_mqttClientPayloadBuilder == null) {
-      var builder = MqttPayloadBuilder();
+      var builder = MqttClientPayloadBuilder();
 
       setState(() {
         _mqttClientPayloadBuilder = builder;
@@ -252,20 +304,21 @@ class _MyHomePageState extends State<MyHomePage> {
       }
       await _streamSubscription?.cancel();
       _streamSubscription = _mqttClient?.updates
-          .listen((List<MqttReceivedMessage<MqttMessage?>>? c) async {
+          ?.listen((List<MqttReceivedMessage<MqttMessage?>>? c) async {
         talker.debug("Received mqtt Message: ${c?[0].payload}");
 
         await publishMessage("pong",
             "${DateTime.now().minute.toString()}${DateTime.now().second.toString()}");
 
-        if (c == null || c[0].topic == null) {
+        if (c == null) {
           return;
         }
 
         final recMess = c[0].payload as MqttPublishMessage;
-        final pt =
-            MqttUtilities.bytesToStringAsString(recMess.payload.message!);
-        if (c[0].topic!.endsWith("/command")) {
+        final pt = MqttPublishPayload.bytesToStringAsString(
+          recMess.payload.message,
+        );
+        if (c[0].topic.endsWith("/command")) {
           talker.verbose("Found topic with command at the end");
           try {
             var jPayload = jsonDecode(pt);
@@ -360,11 +413,11 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  void onSubscribed(MqttSubscription topic) {
+  void onSubscribed(String? topic) {
     talker.debug('Subscription confirmed for topic $topic');
   }
 
-  void onUnSubscribed(MqttSubscription topic) {
+  void onUnSubscribed(String? topic) {
     talker.debug('Unsubscribed for topic $topic');
   }
 
@@ -380,8 +433,8 @@ class _MyHomePageState extends State<MyHomePage> {
     talker.debug('Disconnected');
   }
 
-  void onSubscribeFail(MqttSubscription mqttSub) {
-    talker.debug('Subscription failed: ${mqttSub.topic}');
+  void onSubscribeFail(String? mqttSub) {
+    talker.debug('Subscription failed: $mqttSub');
   }
 
   void onFailedConnectionAttempt(int attempt) {
@@ -433,7 +486,7 @@ class _MyHomePageState extends State<MyHomePage> {
         _mqttClient != null &&
         _mqttClient?.connectionStatus?.state == MqttConnectionState.connected) {
       try {
-        _mqttClient!.unsubscribeStringTopic(_subscribedTopic!);
+        _mqttClient!.unsubscribe(_subscribedTopic!);
       } catch (e) {
         talker.error("unSubscribeOldTopic: $e");
       }
