@@ -71,6 +71,7 @@ class _MyHomePageState extends State<MyHomePage> {
   StreamSubscription? _streamSubscription;
   double dragStartY = 0;
   final int megaByte = 1024 * 1024;
+  double _webViewProgress = 0;
 
   @override
   void initState() {
@@ -186,7 +187,9 @@ class _MyHomePageState extends State<MyHomePage> {
             onVerticalDragStart: (details) {
               dragStartY = details.localPosition.dy;
             },
-            child: WebViewWidget(controller: _webViewController),
+            child: _webViewProgress != 1
+                ? Center(child: SizedBox(height: 60, width: 60, child: CircularProgressIndicator(value: _webViewProgress)))
+                : WebViewWidget(controller: _webViewController),
           );
         },
       ),
@@ -254,7 +257,10 @@ class _MyHomePageState extends State<MyHomePage> {
       ..setNavigationDelegate(
         NavigationDelegate(
           onProgress: (int progress) {
-            // TODO: Add Progress Bar, maybe CircProgressIndicator
+            talker.debug("Progress: $progress");
+            setState(() {
+              _webViewProgress = progress.toDouble() / 100;
+            });
           },
           onPageStarted: (String url) {
             talker.debug("PageStarted: $url");
