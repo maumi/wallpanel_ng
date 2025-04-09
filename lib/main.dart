@@ -44,7 +44,6 @@ class _MyAppState extends State<MyApp> {
               useMaterial3: true,
             ),
             home: MyHomePage(title: 'Wallpanel-ng', settings: settings),
-            // ),
           );
         });
   }
@@ -75,23 +74,8 @@ class _MyHomePageState extends State<MyHomePage> {
   void initState() {
     widget.settings.notiUrl.addListener(() {
       if (widget.settings.notiUrl.value.isNotEmpty) {
-        _webViewController.setJavaScriptMode(JavaScriptMode.unrestricted);
         _webViewController
             .loadRequest(Uri.parse(widget.settings.notiUrl.value));
-        _webViewController
-            .setOnConsoleMessage((JavaScriptConsoleMessage consoleMessage) {
-          if (consoleMessage.level == JavaScriptLogLevel.debug) {
-            talker.debug(consoleMessage.message);
-          } else if (consoleMessage.level == JavaScriptLogLevel.warning) {
-            talker.warning(consoleMessage.message);
-          } else if (consoleMessage.level == JavaScriptLogLevel.error) {
-            talker.error(consoleMessage.message);
-          } else if (consoleMessage.level == JavaScriptLogLevel.info) {
-            talker.info(consoleMessage.message);
-          } else if (consoleMessage.level == JavaScriptLogLevel.log) {
-            talker.log(consoleMessage.message);
-          }
-        });
       }
       talker.debug(
           "Notifier: Url has changed to: ${widget.settings.notiUrl.value}");
@@ -287,6 +271,19 @@ class _MyHomePageState extends State<MyHomePage> {
           },
         ),
       )
+      ..setOnConsoleMessage((JavaScriptConsoleMessage consoleMessage) {
+          if (consoleMessage.level == JavaScriptLogLevel.debug) {
+            talker.debug(consoleMessage.message);
+          } else if (consoleMessage.level == JavaScriptLogLevel.warning) {
+            talker.warning(consoleMessage.message);
+          } else if (consoleMessage.level == JavaScriptLogLevel.error) {
+            talker.error(consoleMessage.message);
+          } else if (consoleMessage.level == JavaScriptLogLevel.info) {
+            talker.info(consoleMessage.message);
+          } else if (consoleMessage.level == JavaScriptLogLevel.log) {
+            talker.log(consoleMessage.message);
+          }
+        })
       ..loadRequest(Uri.parse(requestUrl));
 
     setState(() {
