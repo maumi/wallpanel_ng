@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:android_wake_lock/android_wake_lock.dart';
 import 'package:battery_plus/battery_plus.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:gap/gap.dart';
 import 'package:mqtt_client/mqtt_client.dart';
 import 'package:mqtt_client/mqtt_server_client.dart';
@@ -18,7 +17,6 @@ import 'package:system_resources_2/system_resources_2.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: []);
   runApp(MyApp());
 }
 
@@ -69,13 +67,12 @@ class _MyHomePageState extends State<MyHomePage> {
   String? _subscribedTopic;
   WebViewController _webViewController = WebViewController();
   StreamSubscription? _streamSubscription;
-  double dragStartY = 0;
-  final int megaByte = 1024 * 1024;
+  double _dragStartY = 0;
+  final int _megaByte = 1024 * 1024;
   double _webViewProgress = 0;
 
   @override
   void initState() {
-    talker.verbose("Init App");
     widget.settings.notiUrl.addListener(() {
       if (widget.settings.notiUrl.value.isNotEmpty) {
         _webViewController.setJavaScriptMode(JavaScriptMode.unrestricted);
@@ -173,56 +170,64 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: ValueListenableBuilder(
-        valueListenable: widget.settings.notiUrl,
-        builder: (BuildContext context, value, Widget? child) {
-          return GestureDetector(
-            onVerticalDragEnd: (details) {
-              if (dragStartY < 100 &&
-                  details.localPosition.dy - dragStartY > 100) {
-                talker.debug("Refresh page");
-                _webViewController.reload();
-              }
-            },
-            onVerticalDragStart: (details) {
-              dragStartY = details.localPosition.dy;
-            },
-            child: _webViewProgress != 1
-                ? Center(child: SizedBox(height: 60, width: 60, child: CircularProgressIndicator(value: _webViewProgress)))
-                : WebViewWidget(controller: _webViewController),
-          );
-        },
-      ),
-      floatingActionButton: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          FloatingActionButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (context) =>
-                        SettingsPage(settings: widget.settings)),
-              );
-            },
-            child: const Icon(Icons.settings),
-          ),
-          const Gap(10),
-          FloatingActionButton(
-            onPressed: () async {
-              talker.debug("Reload WebView");
-              talker.debug(
-                  'Free physical memory    : ${SysInfo.getFreePhysicalMemory() ~/ megaByte} MB');
-              talker.debug(
-                  'Available physical memory: ${SysInfo.getAvailablePhysicalMemory() ~/ megaByte} MB');
+        body: reloadGestureDetector(), floatingActionButton: fabRow());
+  }
 
-              talker.debug("Now really reload");
-              await _webViewController.reload();
-            },
-            child: const Icon(Icons.replay_outlined),
-          ),
-        ],
+  Widget reloadGestureDetector() {
+    return GestureDetector(
+      onVerticalDragEnd: (details) {
+        if (_dragStartY < 100 && details.localPosition.dy - _dragStartY > 100) {
+          talker.debug("Refresh page");
+          _webViewController.reload();
+        }
+      },
+      onVerticalDragStart: (details) {
+        _dragStartY = details.localPosition.dy;
+      },
+      child: _webViewProgress != 1
+          ? biggerCircularProgressIndicator()
+          : WebViewWidget(controller: _webViewController),
+    );
+  }
+
+  Widget biggerCircularProgressIndicator() {
+    return Center(
+      child: SizedBox(
+        height: 60,
+        width: 60,
+        child: CircularProgressIndicator(value: _webViewProgress),
       ),
+    );
+  }
+
+  Widget fabRow() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        FloatingActionButton(
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (context) =>
+                      SettingsPage(settings: widget.settings)),
+            );
+          },
+          child: const Icon(Icons.settings),
+        ),
+        const Gap(10),
+        FloatingActionButton(
+          onPressed: () async {
+            talker.debug("Reload WebView");
+            talker.debug(
+                'Free physical memory: ${SysInfo.getFreePhysicalMemory() ~/ _megaByte} MB');
+            talker.debug(
+                'Available physical memory: ${SysInfo.getAvailablePhysicalMemory() ~/ _megaByte} MB');
+            await _webViewController.reload();
+          },
+          child: const Icon(Icons.replay_outlined),
+        ),
+      ],
     );
   }
 
@@ -529,7 +534,6 @@ class _MyHomePageState extends State<MyHomePage> {
     talker.verbose("Before alarm");
     AndroidWakeLock.wakeUp();
     WakelockPlus.enable();
-    // await _webViewController.reload();
     Future.delayed(Duration(seconds: wakeTime), () {
       WakelockPlus.disable();
     });
