@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:android_wake_lock/android_wake_lock.dart';
 import 'package:battery_plus/battery_plus.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:gap/gap.dart';
 import 'package:mqtt_client/mqtt_client.dart';
 import 'package:mqtt_client/mqtt_server_client.dart';
@@ -11,9 +12,8 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:wallpanel_ng/globals.dart';
 import 'package:wallpanel_ng/model/settingsmodel.dart';
 import 'package:wallpanel_ng/pages/settings.dart';
-import 'package:webview_flutter/webview_flutter.dart';
 import 'package:system_info3/system_info3.dart';
-import 'package:system_resources_2/system_resources_2.dart';
+import 'package:flutter/services.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -64,21 +64,22 @@ class _MyHomePageState extends State<MyHomePage> {
   MqttClientPayloadBuilder? _mqttClientPayloadBuilder;
   Timer? _publishTimer;
   String? _subscribedTopic;
-  WebViewController _webViewController = WebViewController();
   StreamSubscription? _streamSubscription;
-  double _dragStartY = 0;
   final int _megaByte = 1024 * 1024;
-  double _webViewProgress = 0;
+  final double _webViewProgress = 1;
+  InAppWebViewController? webViewController;
 
   @override
   void initState() {
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     widget.settings.notiUrl.addListener(() {
-      if (widget.settings.notiUrl.value.isNotEmpty) {
-        _webViewController
-            .loadRequest(Uri.parse(widget.settings.notiUrl.value));
+      if (widget.settings.notiUrl.value.isNotEmpty &&
+          webViewController != null) {
+        webViewController?.loadUrl(
+            urlRequest: URLRequest(url: WebUri(widget.settings.notiUrl.value)));
+        talker.debug(
+            "Notifier: Url has changed to: ${widget.settings.notiUrl.value}");
       }
-      talker.debug(
-          "Notifier: Url has changed to: ${widget.settings.notiUrl.value}");
     });
     widget.settings.notiMqttHost.addListener(
       () {
@@ -128,17 +129,22 @@ class _MyHomePageState extends State<MyHomePage> {
         _publishTimer?.cancel();
       }
     });
-    initAsync();
+    // initAsync();
     super.initState();
   }
 
   Future<void> initAsync() async {
-    await fetchSettings();
-    if (widget.settings.url != null) {
-      setWebViewController(widget.settings.url!);
+    WidgetsFlutterBinding.ensureInitialized();
+
+    // await fetchSettings();
+
+    if (widget.settings.url != null && webViewController != null) {
+      await webViewController!
+          .loadUrl(urlRequest: URLRequest(url: WebUri(widget.settings.url!)));
+      // setWebViewController(widget.settings.url!);
     }
     await setupMqtt();
-    WidgetsFlutterBinding.ensureInitialized();
+
     if (widget.settings.mqttsensorpublish == true) {
       _publishTimer?.cancel();
       _publishTimer = null;
@@ -153,25 +159,22 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-        body: reloadGestureDetector(), floatingActionButton: fabRow());
+    return Scaffold(body: webView(), floatingActionButton: fabRow());
   }
 
-  Widget reloadGestureDetector() {
-    return GestureDetector(
-      onVerticalDragEnd: (details) {
-        if (_dragStartY < 100 && details.localPosition.dy - _dragStartY > 100) {
-          talker.debug("Refresh page");
-          _webViewController.reload();
-        }
-      },
-      onVerticalDragStart: (details) {
-        _dragStartY = details.localPosition.dy;
-      },
-      child: _webViewProgress != 1
-          ? biggerCircularProgressIndicator()
-          : WebViewWidget(controller: _webViewController),
-    );
+  Widget webView() {
+    return _webViewProgress != 1
+        ? biggerCircularProgressIndicator()
+        : InAppWebView(
+            initialUrlRequest: URLRequest(
+                url: WebUri(widget.settings.url ?? "http://google.com")),
+            initialSettings: InAppWebViewSettings(forceDark: ForceDark.ON),
+            onWebViewCreated: (controller) async {
+              webViewController = controller;
+              await fetchSettings();
+              await initAsync();
+            },
+          );
   }
 
   Widget biggerCircularProgressIndicator() {
@@ -189,6 +192,7 @@ class _MyHomePageState extends State<MyHomePage> {
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
         FloatingActionButton(
+          heroTag: 'fabSettings',
           onPressed: () {
             Navigator.push(
               context,
@@ -201,13 +205,15 @@ class _MyHomePageState extends State<MyHomePage> {
         ),
         const Gap(10),
         FloatingActionButton(
+          heroTag: 'fabReload',
           onPressed: () async {
             talker.debug("Reload WebView");
             talker.debug(
                 'Free physical memory: ${SysInfo.getFreePhysicalMemory() ~/ _megaByte} MB');
             talker.debug(
                 'Available physical memory: ${SysInfo.getAvailablePhysicalMemory() ~/ _megaByte} MB');
-            await _webViewController.reload();
+            // await _webViewController.reload();
+            await webViewController?.reload();
           },
           child: const Icon(Icons.replay_outlined),
         ),
@@ -239,65 +245,13 @@ class _MyHomePageState extends State<MyHomePage> {
     talker.verbose("Publish successful: $bPub");
   }
 
-  void setWebViewController(String requestUrl) {
-    talker.verbose("Try to change WebView Controller");
-    var controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setNavigationDelegate(
-        NavigationDelegate(
-          onProgress: (int progress) {
-            talker.debug("Progress: $progress");
-            setState(() {
-              _webViewProgress = progress.toDouble() / 100;
-            });
-          },
-          onPageStarted: (String url) {
-            talker.debug("PageStarted: $url");
-          },
-          onPageFinished: (String url) {
-            talker.debug("PageFinished: $url");
-          },
-          onHttpError: (HttpResponseError error) {
-            talker.debug("Http Error: Response: ${error.response?.statusCode}");
-          },
-          onWebResourceError: (WebResourceError error) {
-            talker.debug("WebRessource Error: $error");
-          },
-          onHttpAuthRequest: (request) => {talker.debug("Auth Request")},
-          onUrlChange: (change) {
-            talker.debug("UrlChange ${change.url}");
-            talker.debug(
-                'CPU Load Average : ${(SystemResources.cpuLoadAvg() * 100).toInt()}%');
-          },
-        ),
-      )
-      ..setOnConsoleMessage((JavaScriptConsoleMessage consoleMessage) {
-          if (consoleMessage.level == JavaScriptLogLevel.debug) {
-            talker.debug(consoleMessage.message);
-          } else if (consoleMessage.level == JavaScriptLogLevel.warning) {
-            talker.warning(consoleMessage.message);
-          } else if (consoleMessage.level == JavaScriptLogLevel.error) {
-            talker.error(consoleMessage.message);
-          } else if (consoleMessage.level == JavaScriptLogLevel.info) {
-            talker.info(consoleMessage.message);
-          } else if (consoleMessage.level == JavaScriptLogLevel.log) {
-            talker.log(consoleMessage.message);
-          }
-        })
-      ..loadRequest(Uri.parse(requestUrl));
-
-    setState(() {
-      _webViewController = controller;
-    });
-  }
-
   void setMqttClientBuilder() {
     if (_mqttClientPayloadBuilder == null) {
       var builder = MqttClientPayloadBuilder();
 
-      setState(() {
-        _mqttClientPayloadBuilder = builder;
-      });
+      // setState(() {
+      _mqttClientPayloadBuilder = builder;
+      // });
     }
   }
 
@@ -363,26 +317,30 @@ class _MyHomePageState extends State<MyHomePage> {
     if (sSettings != null) {
       var jSettings = jsonDecode(sSettings);
       var settings = SettingsModel.fromJson(jSettings);
-      setState(() {
-        widget.settings.darkmode = settings.darkmode;
-        widget.settings.url = settings.url;
-        widget.settings.mqtthost = settings.mqtthost;
-        widget.settings.mqttport = settings.mqttport;
-        widget.settings.mqttsensorinterval = settings.mqttsensorinterval;
-        widget.settings.mqttsensorpublish = settings.mqttsensorpublish;
-        widget.settings.mqttsensortopic = settings.mqttsensortopic;
-        widget.settings.notiDarkmode.value = settings.darkmode ?? false;
-        widget.settings.notiMqttHost.value = settings.mqtthost ?? "";
-        widget.settings.notiMqttInterval.value =
-            settings.mqttsensorinterval ?? 60;
-        widget.settings.notiMqttPort.value = settings.mqttport ?? 1883;
-        widget.settings.notiMqttPublish.value =
-            settings.mqttsensorpublish ?? false;
-        widget.settings.notiMqttTopic.value = settings.mqttsensortopic ?? "";
-        widget.settings.notiUrl.value = settings.url ?? "http://google.com";
-        widget.settings.mqttautoreconnect = settings.mqttautoreconnect;
-        widget.settings.mqttclientidentifier = settings.mqttclientidentifier;
-      });
+      // setState(() {
+      if (settings.url != null) {
+        webViewController?.loadUrl(
+            urlRequest: URLRequest(url: WebUri(settings.url!)));
+      }
+      widget.settings.url = settings.url;
+      widget.settings.darkmode = settings.darkmode;
+      widget.settings.mqtthost = settings.mqtthost;
+      widget.settings.mqttport = settings.mqttport;
+      widget.settings.mqttsensorinterval = settings.mqttsensorinterval;
+      widget.settings.mqttsensorpublish = settings.mqttsensorpublish;
+      widget.settings.mqttsensortopic = settings.mqttsensortopic;
+      widget.settings.notiDarkmode.value = settings.darkmode ?? false;
+      widget.settings.notiMqttHost.value = settings.mqtthost ?? "";
+      widget.settings.notiMqttInterval.value =
+          settings.mqttsensorinterval ?? 60;
+      widget.settings.notiMqttPort.value = settings.mqttport ?? 1883;
+      widget.settings.notiMqttPublish.value =
+          settings.mqttsensorpublish ?? false;
+      widget.settings.notiMqttTopic.value = settings.mqttsensortopic ?? "";
+      widget.settings.notiUrl.value = settings.url ?? "http://google.com";
+      widget.settings.mqttautoreconnect = settings.mqttautoreconnect;
+      widget.settings.mqttclientidentifier = settings.mqttclientidentifier;
+      // });
     }
   }
 
@@ -414,9 +372,9 @@ class _MyHomePageState extends State<MyHomePage> {
       talker.debug(
           "Connected to MQTT Server with state: $mqttStatus and identifier: ${widget.settings.mqttclientidentifier ?? "myClient"}");
       _mqttClient?.disconnect();
-      setState(() {
-        _mqttClient = mqttClient;
-      });
+      // setState(() {
+      _mqttClient = mqttClient;
+      // });
     }
   }
 
@@ -464,9 +422,7 @@ class _MyHomePageState extends State<MyHomePage> {
         var mqttStatus = await mqttClient.connect();
         talker.debug(
             "Connected to MQTT Server with state: $mqttStatus and identifier: ${widget.settings.mqttclientidentifier ?? "myClient"}");
-        setState(() {
-          _mqttClient = mqttClient;
-        });
+        _mqttClient = mqttClient;
       }
     } catch (e) {
       talker.warning("changeMqttConnection: $e");
@@ -479,9 +435,9 @@ class _MyHomePageState extends State<MyHomePage> {
           MqttConnectionState.connected) {
         _mqttClient?.subscribe("$topic/command", MqttQos.atMostOnce);
         talker.debug("Subscribed to topic $topic/command");
-        setState(() {
-          _subscribedTopic = topic;
-        });
+        // setState(() {
+        _subscribedTopic = topic;
+        // });
       }
     } catch (e) {
       talker.error("subscribeTopic: $e");
