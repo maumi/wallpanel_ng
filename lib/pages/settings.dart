@@ -63,19 +63,13 @@ class _SettingsPageState extends State<SettingsPage> {
                       style:
                           TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
                       "General Settings"),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text("URL for Wallpanel to load"),
-                      SizedBox(
-                        width: MediaQuery.sizeOf(context).width * 0.7,
-                        child: TextField(
+                      TextField(
                           textAlign: TextAlign.right,
                           controller: _urlController,
+                          decoration: InputDecoration(
+                            label: Text("URL")
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -91,81 +85,66 @@ class _SettingsPageState extends State<SettingsPage> {
                           }),
                     ],
                   ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text("Transparent Settings Button"),
+                      Checkbox(
+                          value: widget.settings.transparentsettings ?? false,
+                          onChanged: (value) {
+                            setState(() {
+                              widget.settings.transparentsettings = value;
+                              widget.settings.notiTransparentSettings.value =
+                                  widget.settings.transparentsettings ?? false;
+                            });
+                          }),
+                    ],
+                  ),
                   const Text(
                       style:
                           TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
                       "MQTT Settings"),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text("MQTT Host"),
-                      SizedBox(
-                        width: MediaQuery.sizeOf(context).width * 0.7,
-                        child: TextField(
+                      TextField(
                           textAlign: TextAlign.right,
                           controller: _mqttHostController,
+                          decoration: InputDecoration(
+                            label: const Text("MQTT Host")
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text("MQTT Port"),
-                      SizedBox(
-                        width: MediaQuery.sizeOf(context).width * 0.7,
-                        child: TextField(
+                  TextField(
                           textAlign: TextAlign.right,
                           inputFormatters: [
                             FilteringTextInputFormatter.digitsOnly
                           ],
                           controller: _mqttPortController,
+                          decoration: InputDecoration(
+                            label: const Text("MQTT Port")
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text("MQTT Sensor Publish Topic"),
-                      SizedBox(
-                        width: MediaQuery.sizeOf(context).width * 0.7,
-                        child: TextField(
+                  TextField(
                           textAlign: TextAlign.right,
                           controller: _mqttTopicController,
+                          decoration: InputDecoration(
+                            label: const Text("MQTT Sensor Publish Topic")
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text("MQTT Client Identifier"),
-                      SizedBox(
-                        width: MediaQuery.sizeOf(context).width * 0.7,
-                        child: TextField(
+                  TextField(
                           textAlign: TextAlign.right,
                           controller: _mqttidentifierController,
+                          decoration: InputDecoration(
+                            label: const Text("MQTT Client Identifier")
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text("MQTT Sensor Publish Interval (s)"),
-                      SizedBox(
-                        width: MediaQuery.sizeOf(context).width * 0.7,
-                        child: TextField(
+                  TextField(
                           textAlign: TextAlign.right,
                           inputFormatters: [
                             FilteringTextInputFormatter.digitsOnly
                           ],
                           controller: _mqttIntervalController,
+                          decoration: InputDecoration(
+                            label: const Text("MQTT Sensor Publish Interval (s)")
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
