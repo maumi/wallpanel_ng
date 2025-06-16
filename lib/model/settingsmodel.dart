@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 class SettingsModel {
     SettingsModel({
         this.darkmode,
+        this.transparentsettings,
         this.mqtthost,
         this.mqttport,
         this.mqttsensortopic,
@@ -14,6 +15,7 @@ class SettingsModel {
     });
 
     bool? darkmode;
+    bool? transparentsettings;
     String? mqtthost;
     int? mqttport;
     String? mqttsensortopic;
@@ -24,6 +26,7 @@ class SettingsModel {
     String? url;
     final ValueNotifier<String> notiUrl = ValueNotifier<String>("");
     final ValueNotifier<bool> notiDarkmode = ValueNotifier<bool>(false);
+    final ValueNotifier<bool> notiTransparentSettings = ValueNotifier<bool>(false);
     final ValueNotifier<String> notiMqttHost = ValueNotifier<String>("");
     final ValueNotifier<int> notiMqttPort = ValueNotifier<int>(1883);
     final ValueNotifier<String> notiMqttTopic = ValueNotifier<String>("");
@@ -35,6 +38,7 @@ class SettingsModel {
     factory SettingsModel.fromJson(Map<String, dynamic> json){ 
         return SettingsModel(
             darkmode: json["darkmode"],
+            transparentsettings: json["transparentsettings"],
             mqtthost: json["mqtthost"],
             mqttport: json["mqttport"],
             mqttsensortopic: json["mqttsensortopic"],
@@ -48,6 +52,7 @@ class SettingsModel {
 
     Map<String, dynamic> toJson() => {
         "darkmode": darkmode,
+        "transparentsettings": transparentsettings,
         "mqtthost": mqtthost,
         "mqttport": mqttport,
         "mqttsensortopic": mqttsensortopic,
@@ -60,6 +65,6 @@ class SettingsModel {
 
     @override
     String toString(){
-        return "$darkmode, $mqtthost, $mqttport, $mqttsensortopic, $mqttclientidentifier, $mqttsensorinterval, $mqttsensorpublish, $mqttautoreconnect, $url, ";
+        return "$darkmode, $transparentsettings, $mqtthost, $mqttport, $mqttsensortopic, $mqttclientidentifier, $mqttsensorinterval, $mqttsensorpublish, $mqttautoreconnect, $url, ";
     }
 }
