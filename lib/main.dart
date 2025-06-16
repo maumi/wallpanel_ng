@@ -4,7 +4,6 @@ import 'package:android_wake_lock/android_wake_lock.dart';
 import 'package:battery_plus/battery_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
-import 'package:gap/gap.dart';
 import 'package:mqtt_client/mqtt_client.dart';
 import 'package:mqtt_client/mqtt_server_client.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -12,7 +11,6 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:wallpanel_ng/globals.dart';
 import 'package:wallpanel_ng/model/settingsmodel.dart';
 import 'package:wallpanel_ng/pages/settings.dart';
-import 'package:system_info3/system_info3.dart';
 import 'package:flutter/services.dart';
 
 void main() {
@@ -65,7 +63,6 @@ class _MyHomePageState extends State<MyHomePage> {
   Timer? _publishTimer;
   String? _subscribedTopic;
   StreamSubscription? _streamSubscription;
-  final int _megaByte = 1024 * 1024;
   final double _webViewProgress = 1;
   InAppWebViewController? webViewController;
 
@@ -141,6 +138,7 @@ class _MyHomePageState extends State<MyHomePage> {
     if (widget.settings.url != null && webViewController != null) {
       await webViewController!
           .loadUrl(urlRequest: URLRequest(url: WebUri(widget.settings.url!)));
+      await InAppWebViewController.setWebContentsDebuggingEnabled(true);
       // setWebViewController(widget.settings.url!);
     }
     await setupMqtt();
@@ -168,11 +166,16 @@ class _MyHomePageState extends State<MyHomePage> {
         : InAppWebView(
             initialUrlRequest: URLRequest(
                 url: WebUri(widget.settings.url ?? "http://google.com")),
-            initialSettings: InAppWebViewSettings(forceDark: ForceDark.ON),
+            initialSettings: InAppWebViewSettings(
+              forceDark: ForceDark.ON,
+            ),
             onWebViewCreated: (controller) async {
               webViewController = controller;
               await fetchSettings();
               await initAsync();
+            },
+            onConsoleMessage: (controller, consoleMessage) async {
+              talker.debug(consoleMessage.message);
             },
           );
   }
@@ -192,6 +195,8 @@ class _MyHomePageState extends State<MyHomePage> {
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
         FloatingActionButton(
+          backgroundColor: widget.settings.transparentsettings == true ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.2): Theme.of(context).colorScheme.primaryContainer,
+          foregroundColor: widget.settings.transparentsettings == true ? Colors.white.withValues(alpha: 0.02) : Colors.white,
           heroTag: 'fabSettings',
           onPressed: () {
             Navigator.push(
@@ -203,20 +208,20 @@ class _MyHomePageState extends State<MyHomePage> {
           },
           child: const Icon(Icons.settings),
         ),
-        const Gap(10),
-        FloatingActionButton(
-          heroTag: 'fabReload',
-          onPressed: () async {
-            talker.debug("Reload WebView");
-            talker.debug(
-                'Free physical memory: ${SysInfo.getFreePhysicalMemory() ~/ _megaByte} MB');
-            talker.debug(
-                'Available physical memory: ${SysInfo.getAvailablePhysicalMemory() ~/ _megaByte} MB');
-            // await _webViewController.reload();
-            await webViewController?.reload();
-          },
-          child: const Icon(Icons.replay_outlined),
-        ),
+        // const Gap(10),
+        // FloatingActionButton(
+        //   heroTag: 'fabReload',
+        //   onPressed: () async {
+        //     talker.debug("Reload WebView");
+        //     talker.debug(
+        //         'Free physical memory: ${SysInfo.getFreePhysicalMemory() ~/ _megaByte} MB');
+        //     talker.debug(
+        //         'Available physical memory: ${SysInfo.getAvailablePhysicalMemory() ~/ _megaByte} MB');
+        //     // await _webViewController.reload();
+        //     await webViewController?.reload();
+        //   },
+        //   child: const Icon(Icons.replay_outlined),
+        // ),
       ],
     );
   }
@@ -295,6 +300,9 @@ class _MyHomePageState extends State<MyHomePage> {
                 talker.debug(
                     "waketime not specified. Using default of 60 seconds");
               }
+              // webViewController?.loadUrl(
+              //     urlRequest:
+              //         URLRequest(url: WebUri(widget.settings.notiUrl.value)));
               wakeupIntent(wakeTime);
             } else {
               disableWakeLock();
@@ -324,6 +332,7 @@ class _MyHomePageState extends State<MyHomePage> {
       }
       widget.settings.url = settings.url;
       widget.settings.darkmode = settings.darkmode;
+      widget.settings.transparentsettings = settings.transparentsettings;
       widget.settings.mqtthost = settings.mqtthost;
       widget.settings.mqttport = settings.mqttport;
       widget.settings.mqttsensorinterval = settings.mqttsensorinterval;
