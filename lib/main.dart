@@ -168,6 +168,8 @@ class _MyHomePageState extends State<MyHomePage> {
                 url: WebUri(widget.settings.url ?? "http://google.com")),
             initialSettings: InAppWebViewSettings(
               forceDark: ForceDark.ON,
+              mediaPlaybackRequiresUserGesture: false,
+              allowBackgroundAudioPlaying: true
             ),
             onWebViewCreated: (controller) async {
               webViewController = controller;
