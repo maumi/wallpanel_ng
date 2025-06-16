@@ -169,7 +169,9 @@ class _MyHomePageState extends State<MyHomePage> {
             initialSettings: InAppWebViewSettings(
               forceDark: ForceDark.ON,
               mediaPlaybackRequiresUserGesture: false,
-              allowBackgroundAudioPlaying: true
+              allowBackgroundAudioPlaying: true,
+              allowsBackForwardNavigationGestures: false,
+
             ),
             onWebViewCreated: (controller) async {
               webViewController = controller;
