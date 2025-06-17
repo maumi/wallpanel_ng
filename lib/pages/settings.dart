@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:dropdown_search/dropdown_search.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:gap/gap.dart';
@@ -20,9 +21,11 @@ class _SettingsPageState extends State<SettingsPage> {
   final TextEditingController _mqttHostController = TextEditingController();
   final TextEditingController _mqttPortController = TextEditingController();
   final TextEditingController _mqttTopicController = TextEditingController();
-  final TextEditingController _mqttidentifierController = TextEditingController();
+  final TextEditingController _mqttidentifierController =
+      TextEditingController();
   final TextEditingController _mqttIntervalController = TextEditingController();
   final TextEditingController _urlController = TextEditingController();
+  String? _selFabLocation;
 
   @override
   void initState() {
@@ -35,8 +38,8 @@ class _SettingsPageState extends State<SettingsPage> {
     });
     _mqttTopicController.addListener(
         () => widget.settings.mqttsensortopic = _mqttTopicController.text);
-            _mqttidentifierController.addListener(
-        () => widget.settings.mqttclientidentifier = _mqttidentifierController.text);
+    _mqttidentifierController.addListener(() =>
+        widget.settings.mqttclientidentifier = _mqttidentifierController.text);
     _mqttIntervalController.addListener(() {
       var iInterval = int.tryParse(_mqttIntervalController.text);
       widget.settings.mqttsensorinterval = iInterval;
@@ -63,13 +66,11 @@ class _SettingsPageState extends State<SettingsPage> {
                       style:
                           TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
                       "General Settings"),
-                      TextField(
-                          textAlign: TextAlign.right,
-                          controller: _urlController,
-                          decoration: InputDecoration(
-                            label: Text("URL")
-                          ),
-                        ),
+                  TextField(
+                    textAlign: TextAlign.right,
+                    controller: _urlController,
+                    decoration: InputDecoration(label: Text("URL")),
+                  ),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -84,6 +85,22 @@ class _SettingsPageState extends State<SettingsPage> {
                             });
                           }),
                     ],
+                  ),
+                  DropdownSearch<String>(
+                    items: (filter, loadProps) {
+                      return [
+                        "topLeft",
+                        "topRight",
+                        "bottomLeft",
+                        "bottomRight"
+                      ];
+                    },
+                    onChanged: (value) {
+                      widget.settings.fabLocation = value;
+                    },
+                    compareFn: (item1, item2) =>
+                        item1.toString() == item2.toString(),
+                    selectedItem: _selFabLocation,
                   ),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -104,47 +121,36 @@ class _SettingsPageState extends State<SettingsPage> {
                       style:
                           TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
                       "MQTT Settings"),
-                      TextField(
-                          textAlign: TextAlign.right,
-                          controller: _mqttHostController,
-                          decoration: InputDecoration(
-                            label: const Text("MQTT Host")
-                          ),
-                        ),
                   TextField(
-                          textAlign: TextAlign.right,
-                          inputFormatters: [
-                            FilteringTextInputFormatter.digitsOnly
-                          ],
-                          controller: _mqttPortController,
-                          decoration: InputDecoration(
-                            label: const Text("MQTT Port")
-                          ),
-                        ),
+                    textAlign: TextAlign.right,
+                    controller: _mqttHostController,
+                    decoration: InputDecoration(label: const Text("MQTT Host")),
+                  ),
                   TextField(
-                          textAlign: TextAlign.right,
-                          controller: _mqttTopicController,
-                          decoration: InputDecoration(
-                            label: const Text("MQTT Sensor Publish Topic")
-                          ),
-                        ),
+                    textAlign: TextAlign.right,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    controller: _mqttPortController,
+                    decoration: InputDecoration(label: const Text("MQTT Port")),
+                  ),
                   TextField(
-                          textAlign: TextAlign.right,
-                          controller: _mqttidentifierController,
-                          decoration: InputDecoration(
-                            label: const Text("MQTT Client Identifier")
-                          ),
-                        ),
+                    textAlign: TextAlign.right,
+                    controller: _mqttTopicController,
+                    decoration: InputDecoration(
+                        label: const Text("MQTT Sensor Publish Topic")),
+                  ),
                   TextField(
-                          textAlign: TextAlign.right,
-                          inputFormatters: [
-                            FilteringTextInputFormatter.digitsOnly
-                          ],
-                          controller: _mqttIntervalController,
-                          decoration: InputDecoration(
-                            label: const Text("MQTT Sensor Publish Interval (s)")
-                          ),
-                        ),
+                    textAlign: TextAlign.right,
+                    controller: _mqttidentifierController,
+                    decoration: InputDecoration(
+                        label: const Text("MQTT Client Identifier")),
+                  ),
+                  TextField(
+                    textAlign: TextAlign.right,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    controller: _mqttIntervalController,
+                    decoration: InputDecoration(
+                        label: const Text("MQTT Sensor Publish Interval (s)")),
+                  ),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -211,15 +217,26 @@ class _SettingsPageState extends State<SettingsPage> {
     setState(() {
       widget.settings.notiSaved.value = true;
     });
+
     if (widget.settings.url != null &&
         Uri.tryParse(widget.settings.url!) != null) {
       setState(() {
         widget.settings.notiUrl.value = widget.settings.url!;
       });
     }
+    if (widget.settings.fabLocation != null) {
+      setState(() {
+        widget.settings.notiFabLocation.value = widget.settings.fabLocation!;
+      });
+    }
     if (widget.settings.notiDarkmode.value != widget.settings.darkmode) {
       setState(() {
         widget.settings.notiDarkmode.value = widget.settings.darkmode ?? false;
+      });
+    }
+    if (widget.settings.notiTransparentSettings.value != widget.settings.transparentsettings) {
+      setState(() {
+        widget.settings.notiTransparentSettings.value = widget.settings.transparentsettings ?? false;
       });
     }
     if (widget.settings.notiMqttHost.value != widget.settings.mqtthost) {
@@ -277,6 +294,7 @@ class _SettingsPageState extends State<SettingsPage> {
         _mqttIntervalController.text =
             settings.mqttsensorinterval?.toString() ?? "60";
         _urlController.text = settings.url ?? "";
+        _selFabLocation = settings.fabLocation;
       });
     }
   }

@@ -4,6 +4,7 @@ class SettingsModel {
     SettingsModel({
         this.darkmode,
         this.transparentsettings,
+        this.fabLocation,
         this.mqtthost,
         this.mqttport,
         this.mqttsensortopic,
@@ -16,6 +17,7 @@ class SettingsModel {
 
     bool? darkmode;
     bool? transparentsettings;
+    String? fabLocation;
     String? mqtthost;
     int? mqttport;
     String? mqttsensortopic;
@@ -25,6 +27,7 @@ class SettingsModel {
     bool? mqttautoreconnect;
     String? url;
     final ValueNotifier<String> notiUrl = ValueNotifier<String>("");
+    final ValueNotifier<String> notiFabLocation = ValueNotifier<String>("");
     final ValueNotifier<bool> notiDarkmode = ValueNotifier<bool>(false);
     final ValueNotifier<bool> notiTransparentSettings = ValueNotifier<bool>(false);
     final ValueNotifier<String> notiMqttHost = ValueNotifier<String>("");
@@ -39,6 +42,7 @@ class SettingsModel {
         return SettingsModel(
             darkmode: json["darkmode"],
             transparentsettings: json["transparentsettings"],
+            fabLocation: json["fabLocation"],
             mqtthost: json["mqtthost"],
             mqttport: json["mqttport"],
             mqttsensortopic: json["mqttsensortopic"],
@@ -53,6 +57,7 @@ class SettingsModel {
     Map<String, dynamic> toJson() => {
         "darkmode": darkmode,
         "transparentsettings": transparentsettings,
+        "fabLocation": fabLocation,
         "mqtthost": mqtthost,
         "mqttport": mqttport,
         "mqttsensortopic": mqttsensortopic,
@@ -65,6 +70,6 @@ class SettingsModel {
 
     @override
     String toString(){
-        return "$darkmode, $transparentsettings, $mqtthost, $mqttport, $mqttsensortopic, $mqttclientidentifier, $mqttsensorinterval, $mqttsensorpublish, $mqttautoreconnect, $url, ";
+        return "$darkmode, $transparentsettings, $fabLocation, $mqtthost, $mqttport, $mqttsensortopic, $mqttclientidentifier, $mqttsensorinterval, $mqttsensorpublish, $mqttautoreconnect, $url, ";
     }
 }
