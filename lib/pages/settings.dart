@@ -214,9 +214,6 @@ class _SettingsPageState extends State<SettingsPage> {
     var prefs = SharedPreferencesAsync();
     var sSettings = jsonEncode(widget.settings.toJson());
     await prefs.setString("settings", sSettings);
-    setState(() {
-      widget.settings.notiSaved.value = true;
-    });
 
     if (widget.settings.url != null &&
         Uri.tryParse(widget.settings.url!) != null) {

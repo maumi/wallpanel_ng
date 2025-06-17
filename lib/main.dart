@@ -76,8 +76,6 @@ class _MyHomePageState extends State<MyHomePage> {
           webViewController != null) {
         webViewController?.loadUrl(
             urlRequest: URLRequest(url: WebUri(widget.settings.notiUrl.value)));
-        talker.debug(
-            "Notifier: Url has changed to: ${widget.settings.notiUrl.value}");
       }
     });
     widget.settings.notiFabLocation.addListener(() {
@@ -92,36 +90,9 @@ class _MyHomePageState extends State<MyHomePage> {
         _transparentSettings = widget.settings.notiTransparentSettings.value;
       });
     });
-    widget.settings.notiMqttHost.addListener(
-      () {
-        // if (widget.settings.notiMqttHost.value.isNotEmpty) {
-        //   talker.debug("Again Setup mqtt because host changed");
-        //   // setupMqtt();
-        // }
-      },
-    );
-    widget.settings.notiMqttPort.addListener(
-      () {
-        // talker.debug("Again Setup mqtt because port changed");
-        // setupMqtt();
-      },
-    );
-    widget.settings.notiMqttTopic.addListener(
-      () {
-        // setState(() {
-        //   unSubscribeOldTopic();
-        //   subscribeTopic(widget.settings.notiMqttTopic.value);
-        // });
-      },
-    );
     widget.settings.notiMqttInterval.addListener(
       () {
         changePublishInterval();
-      },
-    );
-    widget.settings.notiSaved.addListener(
-      () {
-        talker.debug("Saved. For test change mqtt Connection");
       },
     );
     widget.settings.notiMqttPublish.addListener(() {
@@ -251,8 +222,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Future<void> publishBatteryState() async {
     var batteryLevel = await getBatteryLevel();
-    var bPub = await publishMessage("battery", batteryLevel.toString());
-    talker.verbose("Publish successful: $bPub");
+    await publishMessage("battery", batteryLevel.toString());
   }
 
   void setMqttClientBuilder() {
@@ -264,17 +234,13 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Future<void> subscribeMqtt() async {
     try {
-      if (_mqttClient != null) {
-        talker.debug("Should be able to listen to mqtt topics");
-      } else {
+      if (_mqttClient == null) {
         talker.debug(
             "Should not be able to listen to mqtt topics. Client: $_mqttClient, updates: ${_mqttClient?.updates}");
       }
       await _streamSubscription?.cancel();
       _streamSubscription = _mqttClient?.updates
           ?.listen((List<MqttReceivedMessage<MqttMessage?>>? c) async {
-        talker.debug("Received mqtt Message: ${c?[0].payload}");
-
         await publishMessage("pong",
             "${DateTime.now().minute.toString()}${DateTime.now().second.toString()}");
 
@@ -287,13 +253,9 @@ class _MyHomePageState extends State<MyHomePage> {
           recMess.payload.message,
         );
         if (c[0].topic.endsWith("/command")) {
-          talker.verbose("Found topic with command at the end");
           try {
             var jPayload = jsonDecode(pt);
-            talker.verbose("After json decode $jPayload");
-
             var bWake = jPayload["wake"];
-            talker.verbose("bWake is: $bWake");
             if (bWake) {
               int wakeTime = 60;
               try {
@@ -310,8 +272,6 @@ class _MyHomePageState extends State<MyHomePage> {
             talker.warning("Wrong command");
           }
         }
-        talker.verbose(
-            'EXAMPLE::Change notification:: topic is <${c[0].topic}>, payload is <-- $pt -->');
       });
     } catch (e) {
       talker.error("subscribeMqtt: $e");
@@ -372,47 +332,12 @@ class _MyHomePageState extends State<MyHomePage> {
           widget.settings.mqttport ?? 1883);
       mqttClient.keepAlivePeriod = 86400;
       mqttClient.autoReconnect = true;
-      mqttClient.onSubscribed = onSubscribed;
-      mqttClient.onConnected = onConnected;
-      mqttClient.onAutoReconnect = onAutoReconnect;
-      mqttClient.onDisconnected = onDisconnected;
-      mqttClient.onUnsubscribed = onUnSubscribed;
-      mqttClient.onFailedConnectionAttempt = onFailedConnectionAttempt;
-      mqttClient.onSubscribeFail = onSubscribeFail;
       var mqttStatus = await mqttClient.connect();
       talker.debug(
           "Connected to MQTT Server with state: $mqttStatus and identifier: ${widget.settings.mqttclientidentifier ?? "myClient"}");
       _mqttClient?.disconnect();
       _mqttClient = mqttClient;
     }
-  }
-
-  void onSubscribed(String? topic) {
-    talker.debug('Subscription confirmed for topic $topic');
-  }
-
-  void onUnSubscribed(String? topic) {
-    talker.debug('Unsubscribed for topic $topic');
-  }
-
-  void onConnected() {
-    talker.debug('Connected');
-  }
-
-  void onAutoReconnect() {
-    talker.debug('Auto Reconnect');
-  }
-
-  void onDisconnected() {
-    talker.debug('Disconnected');
-  }
-
-  void onSubscribeFail(String? mqttSub) {
-    talker.debug('Subscription failed: $mqttSub');
-  }
-
-  void onFailedConnectionAttempt(int attempt) {
-    talker.debug('FailedConnectionAttempt: $attempt');
   }
 
   Future<void> changeMqttConnection() async {
@@ -471,15 +396,10 @@ class _MyHomePageState extends State<MyHomePage> {
         _mqttClientPayloadBuilder?.addString(payload);
         if (_mqttClientPayloadBuilder?.payload != null &&
             widget.settings.mqttsensortopic != null) {
-          if (_mqttClient?.connectionStatus?.state !=
-              MqttConnectionState.connected) {
-            talker.debug("(Not) Reconnect Mqtt");
-          }
-          var iMqttId = _mqttClient?.publishMessage(
+          _mqttClient?.publishMessage(
               "${widget.settings.mqttsensortopic!}/$subtopic",
               MqttQos.exactlyOnce,
               _mqttClientPayloadBuilder!.payload!);
-          talker.verbose("published message $iMqttId");
           bRet = true;
         }
       } catch (e) {
@@ -490,7 +410,6 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Future<void> wakeupIntent(int wakeTime) async {
-    talker.verbose("Before alarm");
     AndroidWakeLock.wakeUp();
     WakelockPlus.enable();
     Future.delayed(Duration(seconds: wakeTime), () {
@@ -499,7 +418,6 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Future<void> disableWakeLock() async {
-    talker.verbose("Disable WakeLock");
     WakelockPlus.disable();
   }
 }
