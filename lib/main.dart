@@ -169,14 +169,11 @@ class _MyHomePageState extends State<MyHomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
         body: webView(),
-        floatingActionButton: fab(),  
-        floatingActionButtonLocation: 
-            mapFabLocations.containsKey(_fabLocation)
+        floatingActionButton: fab(),
+        floatingActionButtonLocation: mapFabLocations.containsKey(_fabLocation)
             ? mapFabLocations[_fabLocation]
             : FloatingActionButtonLocation.endDocked);
   }
-
-  
 
   Widget webView() {
     return _webViewProgress != 1

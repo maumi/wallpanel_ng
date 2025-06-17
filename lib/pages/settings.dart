@@ -234,9 +234,11 @@ class _SettingsPageState extends State<SettingsPage> {
         widget.settings.notiDarkmode.value = widget.settings.darkmode ?? false;
       });
     }
-    if (widget.settings.notiTransparentSettings.value != widget.settings.transparentsettings) {
+    if (widget.settings.notiTransparentSettings.value !=
+        widget.settings.transparentsettings) {
       setState(() {
-        widget.settings.notiTransparentSettings.value = widget.settings.transparentsettings ?? false;
+        widget.settings.notiTransparentSettings.value =
+            widget.settings.transparentsettings ?? false;
       });
     }
     if (widget.settings.notiMqttHost.value != widget.settings.mqtthost) {
