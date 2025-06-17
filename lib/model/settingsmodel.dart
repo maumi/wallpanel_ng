@@ -30,14 +30,17 @@ class SettingsModel {
   final ValueNotifier<bool> notiDarkmode = ValueNotifier<bool>(false);
   final ValueNotifier<bool> notiTransparentSettings =
       ValueNotifier<bool>(false);
+  // TODO: Add Listener for mqtt host to have an instant change
   final ValueNotifier<String> notiMqttHost = ValueNotifier<String>("");
+  // TODO: Add Listener for mqtt Port to have an instant change
   final ValueNotifier<int> notiMqttPort = ValueNotifier<int>(1883);
+  // TODO: Add Listener for mqtt Topic to have an instant change
   final ValueNotifier<String> notiMqttTopic = ValueNotifier<String>("");
+  // TODO: Add Listener for mqtt Client Id to have an instant change
   final ValueNotifier<String> notiMqttClientIdentifier =
       ValueNotifier<String>("");
   final ValueNotifier<int> notiMqttInterval = ValueNotifier<int>(60);
   final ValueNotifier<bool> notiMqttPublish = ValueNotifier<bool>(false);
-  final ValueNotifier<bool?> notiSaved = ValueNotifier<bool?>(null);
 
   factory SettingsModel.fromJson(Map<String, dynamic> json) {
     return SettingsModel(
