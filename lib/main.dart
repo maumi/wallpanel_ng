@@ -294,6 +294,8 @@ class _MyHomePageState extends State<MyHomePage> {
       widget.settings.transparentsettings = settings.transparentsettings;
       widget.settings.mqtthost = settings.mqtthost;
       widget.settings.mqttport = settings.mqttport;
+      widget.settings.mqttUser = settings.mqttUser;
+      widget.settings.mqttPassword = settings.mqttPassword;
       widget.settings.mqttsensorinterval = settings.mqttsensorinterval;
       widget.settings.mqttsensorpublish = settings.mqttsensorpublish;
       widget.settings.mqttsensortopic = settings.mqttsensortopic;
@@ -332,7 +334,7 @@ class _MyHomePageState extends State<MyHomePage> {
           widget.settings.mqttport ?? 1883);
       mqttClient.keepAlivePeriod = 86400;
       mqttClient.autoReconnect = true;
-      var mqttStatus = await mqttClient.connect();
+      var mqttStatus = await mqttClient.connect(widget.settings.mqttUser, widget.settings.mqttPassword);
       talker.debug(
           "Connected to MQTT Server with state: $mqttStatus and identifier: ${widget.settings.mqttclientidentifier ?? "myClient"}");
       _mqttClient?.disconnect();
@@ -353,7 +355,7 @@ class _MyHomePageState extends State<MyHomePage> {
             widget.settings.notiMqttClientIdentifier.value,
             widget.settings.notiMqttPort.value);
         mqttClient.keepAlivePeriod = 86400;
-        var mqttStatus = await mqttClient.connect();
+        var mqttStatus = await mqttClient.connect(widget.settings.mqttUser, widget.settings.mqttPassword);
         talker.debug(
             "Connected to MQTT Server with state: $mqttStatus and identifier: ${widget.settings.mqttclientidentifier ?? "myClient"}");
         _mqttClient = mqttClient;

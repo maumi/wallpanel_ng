@@ -20,6 +20,8 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   final TextEditingController _mqttHostController = TextEditingController();
   final TextEditingController _mqttPortController = TextEditingController();
+  final TextEditingController _mqttUserController = TextEditingController();
+  final TextEditingController _mqttPasswordController = TextEditingController();
   final TextEditingController _mqttTopicController = TextEditingController();
   final TextEditingController _mqttidentifierController =
       TextEditingController();
@@ -131,6 +133,16 @@ class _SettingsPageState extends State<SettingsPage> {
                     inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                     controller: _mqttPortController,
                     decoration: InputDecoration(label: const Text("MQTT Port")),
+                  ),
+                  TextField(
+                    textAlign: TextAlign.right,
+                    controller: _mqttUserController,
+                    decoration: InputDecoration(label: const Text("MQTT Username")),
+                  ),
+                  TextField(
+                    textAlign: TextAlign.right,
+                    controller: _mqttPasswordController,
+                    decoration: InputDecoration(label: const Text("MQTT Password")),
                   ),
                   TextField(
                     textAlign: TextAlign.right,
@@ -249,11 +261,23 @@ class _SettingsPageState extends State<SettingsPage> {
         widget.settings.notiMqttPort.value = widget.settings.mqttport ?? 1883;
       });
     }
-    if (widget.settings.notiMqttInterval.value !=
-        widget.settings.mqttsensorinterval) {
+    if (widget.settings.notiMqttPort.value != widget.settings.mqttport) {
       setState(() {
-        widget.settings.notiMqttInterval.value =
-            widget.settings.mqttsensorinterval ?? 60;
+        widget.settings.notiMqttPort.value = widget.settings.mqttport ?? 1883;
+      });
+    }
+    if (widget.settings.notiMqttUser.value !=
+        widget.settings.mqttUser) {
+      setState(() {
+        widget.settings.notiMqttUser.value =
+            widget.settings.mqttUser ?? "";
+      });
+    }
+    if (widget.settings.notiMqttPassword.value !=
+        widget.settings.mqttPassword) {
+      setState(() {
+        widget.settings.notiMqttPassword.value =
+            widget.settings.mqttPassword ?? "";
       });
     }
     if (widget.settings.notiMqttTopic.value !=
@@ -288,6 +312,8 @@ class _SettingsPageState extends State<SettingsPage> {
       setState(() {
         _mqttHostController.text = settings.mqtthost ?? "";
         _mqttPortController.text = settings.mqttport?.toString() ?? "1883";
+        _mqttUserController.text = settings.mqttUser?.toString() ?? "";
+        _mqttPasswordController.text = settings.mqttPassword?.toString() ?? "";
         _mqttTopicController.text = settings.mqttsensortopic ?? "";
         _mqttidentifierController.text = settings.mqttclientidentifier ?? "";
         _mqttIntervalController.text =

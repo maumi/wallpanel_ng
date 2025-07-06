@@ -7,6 +7,8 @@ class SettingsModel {
       this.fabLocation,
       this.mqtthost,
       this.mqttport,
+      this.mqttUser,
+      this.mqttPassword,
       this.mqttsensortopic,
       this.mqttclientidentifier,
       this.mqttsensorinterval,
@@ -19,6 +21,8 @@ class SettingsModel {
   String? fabLocation;
   String? mqtthost;
   int? mqttport;
+  String? mqttUser;
+  String? mqttPassword;
   String? mqttsensortopic;
   String? mqttclientidentifier;
   int? mqttsensorinterval;
@@ -34,6 +38,8 @@ class SettingsModel {
   final ValueNotifier<String> notiMqttHost = ValueNotifier<String>("");
   // TODO: Add Listener for mqtt Port to have an instant change
   final ValueNotifier<int> notiMqttPort = ValueNotifier<int>(1883);
+  final ValueNotifier<String> notiMqttUser = ValueNotifier<String>("");
+  final ValueNotifier<String> notiMqttPassword = ValueNotifier<String>("");
   // TODO: Add Listener for mqtt Topic to have an instant change
   final ValueNotifier<String> notiMqttTopic = ValueNotifier<String>("");
   // TODO: Add Listener for mqtt Client Id to have an instant change
@@ -49,6 +55,8 @@ class SettingsModel {
       fabLocation: json["fabLocation"],
       mqtthost: json["mqtthost"],
       mqttport: json["mqttport"],
+      mqttUser: json["mqttUser"],
+      mqttPassword: json["mqttPassword"],
       mqttsensortopic: json["mqttsensortopic"],
       mqttclientidentifier: json["mqttclientidentifier"],
       mqttsensorinterval: json["mqttsensorinterval"],
@@ -64,6 +72,8 @@ class SettingsModel {
         "fabLocation": fabLocation,
         "mqtthost": mqtthost,
         "mqttport": mqttport,
+        "mqttUser": mqttUser,
+        "mqttPassword": mqttPassword,
         "mqttsensortopic": mqttsensortopic,
         "mqttclientidentifier": mqttclientidentifier,
         "mqttsensorinterval": mqttsensorinterval,
@@ -74,6 +84,6 @@ class SettingsModel {
 
   @override
   String toString() {
-    return "$darkmode, $transparentsettings, $fabLocation, $mqtthost, $mqttport, $mqttsensortopic, $mqttclientidentifier, $mqttsensorinterval, $mqttsensorpublish, $mqttautoreconnect, $url, ";
+    return "$darkmode, $transparentsettings, $fabLocation, $mqtthost, $mqttport, $mqttUser, $mqttPassword, $mqttsensortopic, $mqttclientidentifier, $mqttsensorinterval, $mqttsensorpublish, $mqttautoreconnect, $url, ";
   }
 }
