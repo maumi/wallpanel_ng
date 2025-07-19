@@ -180,25 +180,48 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Widget fab() {
-    return FloatingActionButton(
-      backgroundColor: _transparentSettings == true
-          ? Theme.of(context)
-              .colorScheme
-              .primaryContainer
-              .withValues(alpha: 0.2)
-          : Theme.of(context).colorScheme.primaryContainer,
-      foregroundColor: _transparentSettings == true
-          ? Colors.white.withValues(alpha: 0.02)
-          : Colors.white,
-      heroTag: 'fabSettings',
-      onPressed: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-              builder: (context) => SettingsPage(settings: widget.settings)),
-        );
-      },
-      child: const Icon(Icons.settings),
+    return Row(
+      children: [
+        FloatingActionButton(
+          backgroundColor: _transparentSettings == true
+              ? Theme.of(context)
+                  .colorScheme
+                  .primaryContainer
+                  .withValues(alpha: 0.2)
+              : Theme.of(context).colorScheme.primaryContainer,
+          foregroundColor: _transparentSettings == true
+              ? Colors.white.withValues(alpha: 0.02)
+              : Colors.white,
+          heroTag: 'fabSettings',
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (context) =>
+                      SettingsPage(settings: widget.settings)),
+            );
+          },
+          child: const Icon(Icons.settings),
+        ),
+        FloatingActionButton(
+          backgroundColor: _transparentSettings == true
+              ? Theme.of(context)
+                  .colorScheme
+                  .primaryContainer
+                  .withValues(alpha: 0.2)
+              : Theme.of(context).colorScheme.primaryContainer,
+          foregroundColor: _transparentSettings == true
+              ? Colors.white.withValues(alpha: 0.02)
+              : Colors.white,
+          heroTag: 'fabReload',
+          onPressed: () {
+            if (webViewController != null) {
+              webViewController?.reload();
+            }
+          },
+          child: const Icon(Icons.settings),
+        ),
+      ],
     );
   }
 
@@ -334,7 +357,8 @@ class _MyHomePageState extends State<MyHomePage> {
           widget.settings.mqttport ?? 1883);
       mqttClient.keepAlivePeriod = 86400;
       mqttClient.autoReconnect = true;
-      var mqttStatus = await mqttClient.connect(widget.settings.mqttUser, widget.settings.mqttPassword);
+      var mqttStatus = await mqttClient.connect(
+          widget.settings.mqttUser, widget.settings.mqttPassword);
       talker.debug(
           "Connected to MQTT Server with state: $mqttStatus and identifier: ${widget.settings.mqttclientidentifier ?? "myClient"}");
       _mqttClient?.disconnect();
@@ -355,7 +379,8 @@ class _MyHomePageState extends State<MyHomePage> {
             widget.settings.notiMqttClientIdentifier.value,
             widget.settings.notiMqttPort.value);
         mqttClient.keepAlivePeriod = 86400;
-        var mqttStatus = await mqttClient.connect(widget.settings.mqttUser, widget.settings.mqttPassword);
+        var mqttStatus = await mqttClient.connect(
+            widget.settings.mqttUser, widget.settings.mqttPassword);
         talker.debug(
             "Connected to MQTT Server with state: $mqttStatus and identifier: ${widget.settings.mqttclientidentifier ?? "myClient"}");
         _mqttClient = mqttClient;
