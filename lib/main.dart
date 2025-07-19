@@ -219,7 +219,7 @@ class _MyHomePageState extends State<MyHomePage> {
               webViewController?.reload();
             }
           },
-          child: const Icon(Icons.settings),
+          child: const Icon(Icons.refresh),
         ),
       ],
     );
