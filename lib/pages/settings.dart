@@ -23,8 +23,6 @@ class _SettingsPageState extends State<SettingsPage> {
   final TextEditingController _mqttUserController = TextEditingController();
   final TextEditingController _mqttPasswordController = TextEditingController();
   final TextEditingController _mqttTopicController = TextEditingController();
-  final TextEditingController _mqttidentifierController =
-      TextEditingController();
   final TextEditingController _mqttIntervalController = TextEditingController();
   final TextEditingController _urlController = TextEditingController();
   String? _selFabLocation;
@@ -38,10 +36,12 @@ class _SettingsPageState extends State<SettingsPage> {
       var iPort = int.tryParse(_mqttPortController.text);
       widget.settings.mqttport = iPort;
     });
+    _mqttUserController
+        .addListener(() => widget.settings.mqttUser = _mqttUserController.text);
+    _mqttPasswordController.addListener(
+        () => widget.settings.mqttPassword = _mqttPasswordController.text);
     _mqttTopicController.addListener(
         () => widget.settings.mqttsensortopic = _mqttTopicController.text);
-    _mqttidentifierController.addListener(() =>
-        widget.settings.mqttclientidentifier = _mqttidentifierController.text);
     _mqttIntervalController.addListener(() {
       var iInterval = int.tryParse(_mqttIntervalController.text);
       widget.settings.mqttsensorinterval = iInterval;
@@ -142,6 +142,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   TextField(
                     textAlign: TextAlign.right,
                     controller: _mqttPasswordController,
+                    obscureText: true,
                     decoration: InputDecoration(label: const Text("MQTT Password")),
                   ),
                   TextField(
@@ -149,12 +150,6 @@ class _SettingsPageState extends State<SettingsPage> {
                     controller: _mqttTopicController,
                     decoration: InputDecoration(
                         label: const Text("MQTT Sensor Publish Topic")),
-                  ),
-                  TextField(
-                    textAlign: TextAlign.right,
-                    controller: _mqttidentifierController,
-                    decoration: InputDecoration(
-                        label: const Text("MQTT Client Identifier")),
                   ),
                   TextField(
                     textAlign: TextAlign.right,
@@ -287,13 +282,6 @@ class _SettingsPageState extends State<SettingsPage> {
             widget.settings.mqttsensortopic ?? "";
       });
     }
-    if (widget.settings.notiMqttClientIdentifier.value !=
-        widget.settings.mqttclientidentifier) {
-      setState(() {
-        widget.settings.notiMqttClientIdentifier.value =
-            widget.settings.mqttclientidentifier ?? "";
-      });
-    }
     if (widget.settings.notiMqttPublish.value !=
         widget.settings.mqttsensorpublish) {
       setState(() {
@@ -315,7 +303,6 @@ class _SettingsPageState extends State<SettingsPage> {
         _mqttUserController.text = settings.mqttUser?.toString() ?? "";
         _mqttPasswordController.text = settings.mqttPassword?.toString() ?? "";
         _mqttTopicController.text = settings.mqttsensortopic ?? "";
-        _mqttidentifierController.text = settings.mqttclientidentifier ?? "";
         _mqttIntervalController.text =
             settings.mqttsensorinterval?.toString() ?? "60";
         _urlController.text = settings.url ?? "";

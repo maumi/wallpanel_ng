@@ -7,6 +7,7 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:mqtt_client/mqtt_client.dart';
 import 'package:mqtt_client/mqtt_server_client.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:uuid/uuid.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:wallpanel_ng/globals.dart';
 import 'package:wallpanel_ng/model/settingsmodel.dart';
@@ -71,6 +72,25 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   void initState() {
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    widget.settings.notiMqttHost.addListener(() async {
+      if (widget.settings.notiMqttHost.value.isNotEmpty) {
+        widget.settings.mqtthost = widget.settings.notiMqttHost.value;
+        await changeMqttConnection();
+      }
+    });
+    widget.settings.notiMqttPort.addListener(() async {
+      if (widget.settings.notiMqttPort.value != 0) {
+        widget.settings.mqttport = widget.settings.notiMqttPort.value;
+        await changeMqttConnection();
+      }
+    });
+    widget.settings.notiMqttTopic.addListener(() {
+      if (widget.settings.notiMqttTopic.value.isNotEmpty) {
+        unSubscribeOldTopic();
+        widget.settings.mqttsensortopic = widget.settings.notiMqttTopic.value;
+        subscribeTopic(widget.settings.mqttsensortopic!);
+      }
+    });
     widget.settings.notiUrl.addListener(() {
       if (widget.settings.notiUrl.value.isNotEmpty &&
           webViewController != null) {
@@ -120,7 +140,7 @@ class _MyHomePageState extends State<MyHomePage> {
     if (widget.settings.url != null && webViewController != null) {
       await webViewController!
           .loadUrl(urlRequest: URLRequest(url: WebUri(widget.settings.url!)));
-      await InAppWebViewController.setWebContentsDebuggingEnabled(true);
+      //await InAppWebViewController.setWebContentsDebuggingEnabled(true);
     }
     await setupMqtt();
 
@@ -139,11 +159,12 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        body: webView(),
-        floatingActionButton: fab(),
-        floatingActionButtonLocation: mapFabLocations.containsKey(_fabLocation)
-            ? mapFabLocations[_fabLocation]
-            : FloatingActionButtonLocation.endDocked);
+      body: webView(),
+      floatingActionButton: fab(),
+      floatingActionButtonLocation: mapFabLocations.containsKey(_fabLocation)
+          ? mapFabLocations[_fabLocation]
+          : FloatingActionButtonLocation.endDocked,
+    );
   }
 
   Widget webView() {
@@ -164,7 +185,7 @@ class _MyHomePageState extends State<MyHomePage> {
               await initAsync();
             },
             onConsoleMessage: (controller, consoleMessage) async {
-              talker.debug(consoleMessage.message);
+              //talker.debug(consoleMessage.message);
             },
           );
   }
@@ -180,48 +201,29 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Widget fab() {
-    return Row(
-      children: [
-        FloatingActionButton(
-          backgroundColor: _transparentSettings == true
-              ? Theme.of(context)
-                  .colorScheme
-                  .primaryContainer
-                  .withValues(alpha: 0.2)
-              : Theme.of(context).colorScheme.primaryContainer,
-          foregroundColor: _transparentSettings == true
-              ? Colors.white.withValues(alpha: 0.02)
-              : Colors.white,
-          heroTag: 'fabSettings',
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                  builder: (context) =>
-                      SettingsPage(settings: widget.settings)),
-            );
-          },
-          child: const Icon(Icons.settings),
-        ),
-        FloatingActionButton(
-          backgroundColor: _transparentSettings == true
-              ? Theme.of(context)
-                  .colorScheme
-                  .primaryContainer
-                  .withValues(alpha: 0.2)
-              : Theme.of(context).colorScheme.primaryContainer,
-          foregroundColor: _transparentSettings == true
-              ? Colors.white.withValues(alpha: 0.02)
-              : Colors.white,
-          heroTag: 'fabReload',
-          onPressed: () {
-            if (webViewController != null) {
-              webViewController?.reload();
-            }
-          },
-          child: const Icon(Icons.refresh),
-        ),
-      ],
+    return FloatingActionButton(
+      backgroundColor: _transparentSettings == true
+          ? Colors.grey.withValues(alpha: 0.05)
+          : Colors.grey,
+      foregroundColor: _transparentSettings == true
+          ? Colors.white.withValues(alpha: 0.02)
+          : Colors.white,
+      heroTag: 'fabSettings',
+      onPressed: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+              builder: (context) => SettingsPage(settings: widget.settings)),
+        );
+      },
+      child: GestureDetector(
+        onLongPress: () {
+          if (webViewController != null) {
+            webViewController?.reload();
+          }
+        },
+        child: const Icon(Icons.settings),
+      ),
     );
   }
 
@@ -287,9 +289,9 @@ class _MyHomePageState extends State<MyHomePage> {
                 talker.debug(
                     "waketime not specified. Using default of 60 seconds");
               }
-              wakeupIntent(wakeTime);
+              await wakeupIntent(wakeTime);
             } else {
-              disableWakeLock();
+              await disableWakeLock();
             }
           } catch (e) {
             talker.warning("Wrong command");
@@ -332,7 +334,6 @@ class _MyHomePageState extends State<MyHomePage> {
       widget.settings.notiMqttTopic.value = settings.mqttsensortopic ?? "";
       widget.settings.notiUrl.value = settings.url ?? "http://google.com";
       widget.settings.mqttautoreconnect = settings.mqttautoreconnect;
-      widget.settings.mqttclientidentifier = settings.mqttclientidentifier;
       setState(() {
         _fabLocation = settings.fabLocation;
         _transparentSettings = settings.transparentsettings;
@@ -351,16 +352,17 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Future<void> connectMqtt() async {
     if (widget.settings.mqtthost != null) {
+      var clientId = Uuid().v4().toString();
       var mqttClient = MqttServerClient.withPort(
           widget.settings.mqtthost!,
-          widget.settings.mqttclientidentifier ?? 'myClientId',
+          clientId,
           widget.settings.mqttport ?? 1883);
       mqttClient.keepAlivePeriod = 86400;
       mqttClient.autoReconnect = true;
       var mqttStatus = await mqttClient.connect(
           widget.settings.mqttUser, widget.settings.mqttPassword);
       talker.debug(
-          "Connected to MQTT Server with state: $mqttStatus and identifier: ${widget.settings.mqttclientidentifier ?? "myClient"}");
+          "Connected to MQTT Server with state: $mqttStatus and identifier: $clientId");
       _mqttClient?.disconnect();
       _mqttClient = mqttClient;
     }
@@ -372,17 +374,18 @@ class _MyHomePageState extends State<MyHomePage> {
           MqttConnectionState.connected) {
         _mqttClient?.disconnect();
       }
+      var clientId = Uuid().v4().toString();
       if (widget.settings.mqtthost != null &&
           widget.settings.mqttport != null) {
         var mqttClient = MqttServerClient.withPort(
             widget.settings.notiMqttHost.value,
-            widget.settings.notiMqttClientIdentifier.value,
+            clientId,
             widget.settings.notiMqttPort.value);
         mqttClient.keepAlivePeriod = 86400;
         var mqttStatus = await mqttClient.connect(
             widget.settings.mqttUser, widget.settings.mqttPassword);
         talker.debug(
-            "Connected to MQTT Server with state: $mqttStatus and identifier: ${widget.settings.mqttclientidentifier ?? "myClient"}");
+            "Connected to MQTT Server with state: $mqttStatus and identifier: $clientId");
         _mqttClient = mqttClient;
       }
     } catch (e) {
@@ -437,14 +440,19 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Future<void> wakeupIntent(int wakeTime) async {
-    AndroidWakeLock.wakeUp();
-    WakelockPlus.enable();
-    Future.delayed(Duration(seconds: wakeTime), () {
-      WakelockPlus.disable();
-    });
+    talker.debug("Before AndroidWakeLock");
+    await AndroidWakeLock.wakeUp();
+    talker.debug('Before WakelockPlus.enable');
+    await WakelockPlus.enable();
+    talker.debug('Before Future.delayed');
+    await Future.delayed(Duration(seconds: wakeTime));
+    talker.debug('Before WakelockPlus.disable');
+    await WakelockPlus.disable();
+    talker.debug('After WakelockPlus.disable');
   }
 
   Future<void> disableWakeLock() async {
-    WakelockPlus.disable();
+    talker.debug('In function disableWakeLock');
+    await WakelockPlus.disable();
   }
 }

@@ -10,7 +10,6 @@ class SettingsModel {
       this.mqttUser,
       this.mqttPassword,
       this.mqttsensortopic,
-      this.mqttclientidentifier,
       this.mqttsensorinterval,
       this.mqttsensorpublish,
       this.mqttautoreconnect,
@@ -24,7 +23,6 @@ class SettingsModel {
   String? mqttUser;
   String? mqttPassword;
   String? mqttsensortopic;
-  String? mqttclientidentifier;
   int? mqttsensorinterval;
   bool? mqttsensorpublish;
   bool? mqttautoreconnect;
@@ -34,17 +32,11 @@ class SettingsModel {
   final ValueNotifier<bool> notiDarkmode = ValueNotifier<bool>(false);
   final ValueNotifier<bool> notiTransparentSettings =
       ValueNotifier<bool>(false);
-  // TODO: Add Listener for mqtt host to have an instant change
   final ValueNotifier<String> notiMqttHost = ValueNotifier<String>("");
-  // TODO: Add Listener for mqtt Port to have an instant change
   final ValueNotifier<int> notiMqttPort = ValueNotifier<int>(1883);
   final ValueNotifier<String> notiMqttUser = ValueNotifier<String>("");
   final ValueNotifier<String> notiMqttPassword = ValueNotifier<String>("");
-  // TODO: Add Listener for mqtt Topic to have an instant change
   final ValueNotifier<String> notiMqttTopic = ValueNotifier<String>("");
-  // TODO: Add Listener for mqtt Client Id to have an instant change
-  final ValueNotifier<String> notiMqttClientIdentifier =
-      ValueNotifier<String>("");
   final ValueNotifier<int> notiMqttInterval = ValueNotifier<int>(60);
   final ValueNotifier<bool> notiMqttPublish = ValueNotifier<bool>(false);
 
@@ -58,7 +50,6 @@ class SettingsModel {
       mqttUser: json["mqttUser"],
       mqttPassword: json["mqttPassword"],
       mqttsensortopic: json["mqttsensortopic"],
-      mqttclientidentifier: json["mqttclientidentifier"],
       mqttsensorinterval: json["mqttsensorinterval"],
       mqttsensorpublish: json["mqttsensorpublish"],
       mqttautoreconnect: json["mqttautoreconnect"],
@@ -75,7 +66,6 @@ class SettingsModel {
         "mqttUser": mqttUser,
         "mqttPassword": mqttPassword,
         "mqttsensortopic": mqttsensortopic,
-        "mqttclientidentifier": mqttclientidentifier,
         "mqttsensorinterval": mqttsensorinterval,
         "mqttsensorpublish": mqttsensorpublish,
         "mqttautoreconnect": mqttautoreconnect,
@@ -84,6 +74,6 @@ class SettingsModel {
 
   @override
   String toString() {
-    return "$darkmode, $transparentsettings, $fabLocation, $mqtthost, $mqttport, $mqttUser, $mqttPassword, $mqttsensortopic, $mqttclientidentifier, $mqttsensorinterval, $mqttsensorpublish, $mqttautoreconnect, $url, ";
+    return "$darkmode, $transparentsettings, $fabLocation, $mqtthost, $mqttport, $mqttUser, $mqttPassword, $mqttsensortopic, $mqttsensorinterval, $mqttsensorpublish, $mqttautoreconnect, $url, ";
   }
 }
