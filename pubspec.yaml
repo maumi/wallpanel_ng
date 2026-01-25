@@ -50,7 +50,7 @@ dependencies:
   android_wake_lock: ^1.0.5
   package_info_plus: ^8.3.0
   system_info_plus: ^0.0.6
-  system_info3: ^4.0.1
+  system_info3: ^4.0.2
   system_resources_2: ^2.0.0
   flutter_inappwebview: ^6.1.5
   dropdown_search: ^6.0.2
