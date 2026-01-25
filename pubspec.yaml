@@ -43,8 +43,8 @@ dependencies:
   talker_flutter: ^4.6.10
   gap: ^3.0.1
   equatable: ^2.0.7
-  flutter_riverpod: ^2.6.1
-  riverpod_annotation: ^2.6.1
+  flutter_riverpod: ^3.1.0
+  riverpod_annotation: ^4.0.0
   json_annotation: ^4.9.0
   android_intent_plus: ^5.3.0
   android_wake_lock: ^1.0.5
@@ -66,11 +66,11 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^5.0.0
-  riverpod_generator: ^2.6.4
-  build_runner: ^2.4.14
-  custom_lint: ^0.7.3
-  riverpod_lint: ^2.6.4
-  json_serializable: ^6.9.3
+  riverpod_generator: ^4.0.0+1
+  build_runner: ^2.10.5
+  custom_lint: ^0.8.1
+  riverpod_lint: ^3.1.0
+  json_serializable: ^6.11.2
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
