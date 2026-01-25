@@ -35,7 +35,7 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
   mqtt5_client: ^4.7.0
-  webview_flutter: ^4.10.0
+  webview_flutter: ^4.13.1
   wakelock_plus: ^1.2.10
   shared_preferences: ^2.5.1
   battery_plus: ^6.2.1
