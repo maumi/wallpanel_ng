@@ -36,7 +36,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   mqtt5_client: ^4.7.0
   webview_flutter: ^4.10.0
-  wakelock_plus: ^1.2.10
+  wakelock_plus: ^1.4.0
   shared_preferences: ^2.5.1
   battery_plus: ^6.2.1
   mqtt_client: ^10.5.1
@@ -48,7 +48,7 @@ dependencies:
   json_annotation: ^4.9.0
   android_intent_plus: ^5.3.0
   android_wake_lock: ^1.0.5
-  package_info_plus: ^8.3.0
+  package_info_plus: ^9.0.0
   system_info_plus: ^0.0.6
   system_info3: ^4.0.1
   system_resources_2: ^2.0.0
