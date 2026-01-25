@@ -12,148 +12,204 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:wallpanel_ng/globals.dart';
 import 'package:wallpanel_ng/model/settingsmodel.dart';
 import 'package:wallpanel_ng/pages/settings.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:wallpanel_ng/providers/settings_provider.dart';
 import 'package:flutter/services.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(MyApp());
+  runApp(const ProviderScope(child: MyApp()));
 }
 
-class MyApp extends StatefulWidget {
+class MyApp extends ConsumerStatefulWidget {
   const MyApp({super.key});
 
   @override
-  State<MyApp> createState() => _MyAppState();
+  ConsumerState<MyApp> createState() => _MyAppState();
 }
 
-class _MyAppState extends State<MyApp> {
-  SettingsModel settings = SettingsModel();
-
+class _MyAppState extends ConsumerState<MyApp> {
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder(
-        valueListenable: settings.notiDarkmode,
-        builder: (BuildContext context, bool value, Widget? child) {
-          return MaterialApp(
-            title: 'Wallpanel-ng',
-            darkTheme: ThemeData.dark(),
-            themeMode: value ? ThemeMode.dark : ThemeMode.light,
-            theme: ThemeData(
-              colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-              useMaterial3: true,
-            ),
-            home: MyHomePage(title: 'Wallpanel-ng', settings: settings),
-          );
-        });
+    final settings = ref.watch(settingsNotifierProvider);
+    final useDark = settings.darkmode ?? false;
+    return MaterialApp(
+      title: 'Wallpanel-ng',
+      darkTheme: ThemeData.dark(),
+      themeMode: useDark ? ThemeMode.dark : ThemeMode.light,
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        useMaterial3: true,
+      ),
+      home: MyHomePage(title: 'Wallpanel-ng', settings: settings),
+    );
   }
 }
 
-class MyHomePage extends StatefulWidget {
+class MyHomePage extends ConsumerStatefulWidget  {
   const MyHomePage({super.key, required this.title, required this.settings});
 
   final String title;
   final SettingsModel settings;
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  ConsumerState<MyHomePage> createState() => _MyHomePageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
+class _MyHomePageState extends ConsumerState<MyHomePage> with WidgetsBindingObserver {
   MqttServerClient? _mqttClient;
   MqttClientPayloadBuilder? _mqttClientPayloadBuilder;
-  Timer? _publishTimer;
+  // Timer? _publishTimer;
   String? _subscribedTopic;
   StreamSubscription? _streamSubscription;
   final double _webViewProgress = 1;
   InAppWebViewController? webViewController;
   String? _fabLocation;
   bool? _transparentSettings;
+  bool _webViewPausedByApp = false;
+  DateTime? _wakeupStartTime;
+
+  // neu: detaillierte Zeiten + Poll-Timer
+  DateTime? _wakeupResumeCallTime;
+  DateTime? _appResumedTime;
+  DateTime? _webviewResumeCompletedTime;
+  Timer? _wakeupPollTimer;
+  int _wakeupPollAttempts = 0;
 
   @override
   void initState() {
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-    widget.settings.notiMqttHost.addListener(() async {
-      if (widget.settings.notiMqttHost.value.isNotEmpty) {
-        widget.settings.mqtthost = widget.settings.notiMqttHost.value;
-        await changeMqttConnection();
-      }
-    });
-    widget.settings.notiMqttPort.addListener(() async {
-      if (widget.settings.notiMqttPort.value != 0) {
-        widget.settings.mqttport = widget.settings.notiMqttPort.value;
-        await changeMqttConnection();
-      }
-    });
-    widget.settings.notiMqttTopic.addListener(() {
-      if (widget.settings.notiMqttTopic.value.isNotEmpty) {
-        unSubscribeOldTopic();
-        widget.settings.mqttsensortopic = widget.settings.notiMqttTopic.value;
-        subscribeTopic(widget.settings.mqttsensortopic!);
-      }
-    });
-    widget.settings.notiUrl.addListener(() {
-      if (widget.settings.notiUrl.value.isNotEmpty &&
-          webViewController != null) {
-        webViewController?.loadUrl(
-            urlRequest: URLRequest(url: WebUri(widget.settings.notiUrl.value)));
-      }
-    });
-    widget.settings.notiFabLocation.addListener(() {
-      if (widget.settings.notiFabLocation.value.isNotEmpty) {
-        setState(() {
-          _fabLocation = widget.settings.notiFabLocation.value;
-        });
-      }
-    });
-    widget.settings.notiTransparentSettings.addListener(() {
-      setState(() {
-        _transparentSettings = widget.settings.notiTransparentSettings.value;
-      });
-    });
-    widget.settings.notiMqttInterval.addListener(
-      () {
-        changePublishInterval();
-      },
-    );
-    widget.settings.notiMqttPublish.addListener(() {
-      if (widget.settings.notiMqttPublish.value) {
-        setState(() {
-          _publishTimer?.cancel();
-          _publishTimer = null;
-          _publishTimer = Timer.periodic(
-            Duration(seconds: widget.settings.mqttsensorinterval ?? 60),
-            (timer) async {
-              await publishBatteryState();
-            },
-          );
-        });
-      } else {
-        _publishTimer?.cancel();
-      }
-    });
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+  }
+
+  @override
+  void didUpdateWidget(covariant MyHomePage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final old = oldWidget.settings;
+    final cur = widget.settings;
+
+    if (old.mqtthost != cur.mqtthost || old.mqttport != cur.mqttport) {
+      changeMqttConnection();
+    }
+
+    if (old.mqttsensortopic != cur.mqttsensortopic) {
+      if (old.mqttsensortopic?.isNotEmpty ?? false) unSubscribeOldTopic();
+      if (cur.mqttsensortopic != null && cur.mqttsensortopic!.isNotEmpty) {
+        subscribeTopic(cur.mqttsensortopic!);
+      }
+    }
+
+    if (old.url != cur.url && cur.url != null && webViewController != null) {
+      webViewController?.loadUrl(urlRequest: URLRequest(url: WebUri(cur.url!)));
+    }
+
+    if (old.fabLocation != cur.fabLocation) {
+      setState(() {
+        _fabLocation = cur.fabLocation;
+      });
+    }
+
+    if (old.transparentsettings != cur.transparentsettings) {
+      setState(() {
+        _transparentSettings = cur.transparentsettings;
+      });
+    }
   }
 
   Future<void> initAsync() async {
     WidgetsFlutterBinding.ensureInitialized();
-
-    if (widget.settings.url != null && webViewController != null) {
+    final settings = ref.read(settingsNotifierProvider);
+    if (settings.url != null && webViewController != null) {
       await webViewController!
-          .loadUrl(urlRequest: URLRequest(url: WebUri(widget.settings.url!)));
+          .loadUrl(urlRequest: URLRequest(url: WebUri(settings.url!)));
       //await InAppWebViewController.setWebContentsDebuggingEnabled(true);
     }
     await setupMqtt();
 
-    if (widget.settings.mqttsensorpublish == true) {
-      _publishTimer?.cancel();
-      _publishTimer = null;
-      _publishTimer = Timer.periodic(
-        Duration(seconds: widget.settings.mqttsensorinterval ?? 60),
-        (timer) async {
-          await publishBatteryState();
-        },
-      );
+    // if (settings.mqttsensorpublish == true) {
+    //   _publishTimer?.cancel();
+    //   _publishTimer = null;
+    //   _publishTimer = Timer.periodic(
+    //     Duration(seconds: settings.mqttsensorinterval ?? 60),
+    //     (timer) async {
+    //       await publishBatteryState();
+    //     },
+    //   );
+    // }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    talker.debug("didChangeAppLifecycleState: $state at ${DateTime.now()}");
+    // wenn App in den Hintergrund geht: WebView pausieren
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+      _pauseWebView();
+      _webViewPausedByApp = true;
+    } else if (state == AppLifecycleState.resumed) {
+      _appResumedTime = DateTime.now();
+      if (_wakeupStartTime != null) {
+        talker.debug("Time since wakeup -> App resumed: ${_appResumedTime!.difference(_wakeupStartTime!).inMilliseconds} ms");
+      } else {
+        talker.debug("App resumed (no wakeupStartTime)");
+      }
+      if (_webViewPausedByApp) {
+        _resumeWebView();
+        _webViewPausedByApp = false;
+      }
     }
+  }
+
+// navigation timing helper removed (unused). Keep code in VCS if needed later.
+
+Future<void> _pauseWebView() async {
+ try {
+      // Plugin-API (falls implementiert)
+      await webViewController?.pause();
+    } catch (_) {}
+    // try {
+    //   // Fallback: stoppe Medien/Animationen per JS (geringere Risiko-API)
+    //   await webViewController?.evaluateJavascript(source: """
+    //     try {
+    //       document.querySelectorAll('video,audio').forEach(v => { try { v.pause(); } catch(e){} });
+    //       window.__wallpanel_paused = true;
+    //     } catch(e){}
+    //   """);
+    // } catch (_) {}
+  }
+
+  Future<void> _resumeWebView() async {
+    try {
+      _wakeupResumeCallTime = DateTime.now();
+      talker.debug("Resuming WebView called at $_wakeupResumeCallTime (since wakeup: ${_wakeupStartTime != null ? _wakeupResumeCallTime!.difference(_wakeupStartTime!).inMilliseconds : 'n/a'} ms)");
+      await webViewController?.resume();
+      _webviewResumeCompletedTime = DateTime.now();
+      talker.debug("WebView.resume completed at $_webviewResumeCompletedTime (since wakeup: ${_wakeupStartTime != null ? _webviewResumeCompletedTime!.difference(_wakeupStartTime!).inMilliseconds : 'n/a'} ms)");
+      _startWakeupPoll();
+    } catch (e) {
+      talker.debug("Resume WebView failed: $e");
+    }
+  }
+
+  void _startWakeupPoll() {
+    _wakeupPollAttempts = 0;
+    _wakeupPollTimer?.cancel();
+    _wakeupPollTimer = Timer.periodic(Duration(milliseconds: 250), (t) async {
+      _wakeupPollAttempts++;
+      if (webViewController == null) return;
+      try {
+        final readyState = await webViewController!.evaluateJavascript(source: "document.readyState");
+        talker.debug("wakeupPoll #$_wakeupPollAttempts readyState=$readyState at ${DateTime.now()} (since wakeup: ${_wakeupStartTime != null ? DateTime.now().difference(_wakeupStartTime!).inMilliseconds : 'n/a'} ms)");
+        if (readyState == 'complete' || _wakeupPollAttempts > 80) {
+          talker.debug("wakeupPoll stopping (readyState=$readyState) after $_wakeupPollAttempts attempts");
+          _wakeupPollTimer?.cancel();
+          // await _logNavigationTiming();
+        }
+      } catch (e) {
+        talker.debug("wakeupPoll eval failed: $e (attempt $_wakeupPollAttempts)");
+        if (_wakeupPollAttempts > 80) _wakeupPollTimer?.cancel();
+      }
+    });
   }
 
   @override
@@ -172,17 +228,53 @@ class _MyHomePageState extends State<MyHomePage> {
         ? biggerCircularProgressIndicator()
         : InAppWebView(
             initialUrlRequest: URLRequest(
-                url: WebUri(widget.settings.url ?? "http://google.com")),
+              url: WebUri(ref.read(settingsNotifierProvider).url ?? "http://google.com")),
             initialSettings: InAppWebViewSettings(
               forceDark: ForceDark.ON,
               mediaPlaybackRequiresUserGesture: false,
-              allowBackgroundAudioPlaying: true,
+              allowBackgroundAudioPlaying: false,
               allowsBackForwardNavigationGestures: false,
             ),
             onWebViewCreated: (controller) async {
               webViewController = controller;
               await fetchSettings();
               await initAsync();
+            },
+            // neu: Lade- / Fortschritts- Listener zum Messen von Verzögerungen
+            onLoadStart: (controller, url) {
+              talker.debug("onLoadStart ${url?.toString()} at ${DateTime.now()}");
+              if (_wakeupStartTime != null) {
+                talker.debug(
+                    "Time since wakeup -> onLoadStart: ${DateTime.now().difference(_wakeupStartTime!).inMilliseconds} ms");
+              }
+            },
+            onProgressChanged: (controller, progress) {
+              talker.debug(
+                  "onProgressChanged: $progress% at ${DateTime.now()} (since wakeup: ${_wakeupStartTime != null ? DateTime.now().difference(_wakeupStartTime!).inMilliseconds : 'n/a'} ms)");
+            },
+            onLoadStop: (controller, url) {
+              talker.debug("onLoadStop ${url?.toString()} at ${DateTime.now()}");
+              _wakeupPollTimer?.cancel();
+              if (_wakeupStartTime != null) {
+                talker.debug(
+                    "Time since wakeup -> onLoadStop: ${DateTime.now().difference(_wakeupStartTime!).inMilliseconds} ms");
+                // optional: clear timestamp nachdem geladen
+                _wakeupStartTime = null;
+              }
+            },
+            onReceivedError: (controller, request, error) {
+              _wakeupPollTimer?.cancel();
+              // Log the error and request in a generic way to avoid SDK-version
+              // or platform-specific field differences on WebResourceError/WebResourceRequest
+              String urlString;
+              try {
+                urlString = request.url.toString();
+              } catch (_) {
+                urlString = request.toString();
+              }
+
+              talker.error(
+                  "onReceivedError ({description}) for $urlString at ${DateTime.now()}");
             },
             onConsoleMessage: (controller, consoleMessage) async {
               //talker.debug(consoleMessage.message);
@@ -212,8 +304,7 @@ class _MyHomePageState extends State<MyHomePage> {
       onPressed: () {
         Navigator.push(
           context,
-          MaterialPageRoute(
-              builder: (context) => SettingsPage(settings: widget.settings)),
+          MaterialPageRoute(builder: (context) => const SettingsPage()),
         );
       },
       child: GestureDetector(
@@ -227,16 +318,16 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-  void changePublishInterval() {
-    _publishTimer?.cancel();
-    _publishTimer = null;
-    _publishTimer = Timer.periodic(
-      Duration(seconds: widget.settings.mqttsensorinterval ?? 60),
-      (timer) async {
-        await publishBatteryState();
-      },
-    );
-  }
+  // void changePublishInterval() {
+  //   _publishTimer?.cancel();
+  //   _publishTimer = null;
+  //   _publishTimer = Timer.periodic(
+  //     Duration(seconds: widget.settings.mqttsensorinterval ?? 60),
+  //     (timer) async {
+  //       await publishBatteryState();
+  //     },
+  //   );
+  // }
 
   Future<int> getBatteryLevel() async {
     var battery = Battery();
@@ -266,8 +357,10 @@ class _MyHomePageState extends State<MyHomePage> {
       await _streamSubscription?.cancel();
       _streamSubscription = _mqttClient?.updates
           ?.listen((List<MqttReceivedMessage<MqttMessage?>>? c) async {
-        await publishMessage("pong",
-            "${DateTime.now().minute.toString()}${DateTime.now().second.toString()}");
+        // await publishMessage("pong",
+        //     "${DateTime.now().minute.toString()}${DateTime.now().second.toString()}");
+
+        await publishBatteryState();
 
         if (c == null) {
           return;
@@ -277,6 +370,13 @@ class _MyHomePageState extends State<MyHomePage> {
         final pt = MqttPublishPayload.bytesToStringAsString(
           recMess.payload.message,
         );
+        if (c[0].topic.endsWith("echo")) {
+          try {
+            publishMessage("echoBack", pt);
+          } catch (e) {
+            talker.warning("Wrong command");
+          }
+        }
         if (c[0].topic.endsWith("/command")) {
           try {
             var jPayload = jsonDecode(pt);
@@ -289,7 +389,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 talker.debug(
                     "waketime not specified. Using default of 60 seconds");
               }
-              await wakeupIntent(wakeTime);
+             wakeupIntent(wakeTime);
             } else {
               await disableWakeLock();
             }
@@ -308,32 +408,13 @@ class _MyHomePageState extends State<MyHomePage> {
     var sSettings = await prefs.getString('settings');
     if (sSettings != null) {
       var jSettings = jsonDecode(sSettings);
-      var settings = SettingsModel.fromJson(jSettings);
+      final notifier = ref.read(settingsNotifierProvider.notifier);
+      notifier.loadFromJson(jSettings);
+      final settings = ref.read(settingsNotifierProvider);
       if (settings.url != null) {
         webViewController?.loadUrl(
             urlRequest: URLRequest(url: WebUri(settings.url!)));
       }
-      widget.settings.url = settings.url;
-      widget.settings.darkmode = settings.darkmode;
-      widget.settings.fabLocation = settings.fabLocation;
-      widget.settings.transparentsettings = settings.transparentsettings;
-      widget.settings.mqtthost = settings.mqtthost;
-      widget.settings.mqttport = settings.mqttport;
-      widget.settings.mqttUser = settings.mqttUser;
-      widget.settings.mqttPassword = settings.mqttPassword;
-      widget.settings.mqttsensorinterval = settings.mqttsensorinterval;
-      widget.settings.mqttsensorpublish = settings.mqttsensorpublish;
-      widget.settings.mqttsensortopic = settings.mqttsensortopic;
-      widget.settings.notiDarkmode.value = settings.darkmode ?? false;
-      widget.settings.notiMqttHost.value = settings.mqtthost ?? "";
-      widget.settings.notiMqttInterval.value =
-          settings.mqttsensorinterval ?? 60;
-      widget.settings.notiMqttPort.value = settings.mqttport ?? 1883;
-      widget.settings.notiMqttPublish.value =
-          settings.mqttsensorpublish ?? false;
-      widget.settings.notiMqttTopic.value = settings.mqttsensortopic ?? "";
-      widget.settings.notiUrl.value = settings.url ?? "http://google.com";
-      widget.settings.mqttautoreconnect = settings.mqttautoreconnect;
       setState(() {
         _fabLocation = settings.fabLocation;
         _transparentSettings = settings.transparentsettings;
@@ -345,22 +426,22 @@ class _MyHomePageState extends State<MyHomePage> {
     await connectMqtt();
     setMqttClientBuilder();
     await subscribeMqtt();
-    if (widget.settings.mqttsensortopic != null) {
-      subscribeTopic(widget.settings.mqttsensortopic!);
+    final settings = ref.read(settingsNotifierProvider);
+    if (settings.mqttsensortopic != null) {
+      subscribeTopic(settings.mqttsensortopic!);
     }
   }
 
   Future<void> connectMqtt() async {
-    if (widget.settings.mqtthost != null) {
+    final settings = ref.read(settingsNotifierProvider);
+    if (settings.mqtthost != null) {
       var clientId = Uuid().v4().toString();
-      var mqttClient = MqttServerClient.withPort(
-          widget.settings.mqtthost!,
-          clientId,
-          widget.settings.mqttport ?? 1883);
-      mqttClient.keepAlivePeriod = 86400;
+      var mqttClient = MqttServerClient.withPort(settings.mqtthost!,
+          clientId, settings.mqttport ?? 1883);
+      mqttClient.keepAlivePeriod = 30;
       mqttClient.autoReconnect = true;
       var mqttStatus = await mqttClient.connect(
-          widget.settings.mqttUser, widget.settings.mqttPassword);
+          settings.mqttUser, settings.mqttPassword);
       talker.debug(
           "Connected to MQTT Server with state: $mqttStatus and identifier: $clientId");
       _mqttClient?.disconnect();
@@ -375,15 +456,15 @@ class _MyHomePageState extends State<MyHomePage> {
         _mqttClient?.disconnect();
       }
       var clientId = Uuid().v4().toString();
-      if (widget.settings.mqtthost != null &&
-          widget.settings.mqttport != null) {
+        final settings = ref.read(settingsNotifierProvider);
+        if (settings.mqtthost != null && settings.mqttport != null) {
         var mqttClient = MqttServerClient.withPort(
-            widget.settings.notiMqttHost.value,
-            clientId,
-            widget.settings.notiMqttPort.value);
-        mqttClient.keepAlivePeriod = 86400;
+          settings.notiMqttHost.value,
+          clientId,
+          settings.notiMqttPort.value);
+        mqttClient.keepAlivePeriod = 60;
         var mqttStatus = await mqttClient.connect(
-            widget.settings.mqttUser, widget.settings.mqttPassword);
+          settings.mqttUser, settings.mqttPassword);
         talker.debug(
             "Connected to MQTT Server with state: $mqttStatus and identifier: $clientId");
         _mqttClient = mqttClient;
@@ -398,6 +479,7 @@ class _MyHomePageState extends State<MyHomePage> {
       if (_mqttClient?.connectionStatus?.state ==
           MqttConnectionState.connected) {
         _mqttClient?.subscribe("$topic/command", MqttQos.atMostOnce);
+        _mqttClient?.subscribe("$topic/echo", MqttQos.atMostOnce);
         talker.debug("Subscribed to topic $topic/command");
         _subscribedTopic = topic;
       }
@@ -420,14 +502,15 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Future<bool> publishMessage(String subtopic, String payload) async {
     var bRet = false;
-    if (widget.settings.mqttsensortopic != null) {
+    final settings = ref.read(settingsNotifierProvider);
+    if (settings.mqttsensortopic != null) {
       try {
         _mqttClientPayloadBuilder?.clear();
         _mqttClientPayloadBuilder?.addString(payload);
         if (_mqttClientPayloadBuilder?.payload != null &&
-            widget.settings.mqttsensortopic != null) {
+            settings.mqttsensortopic != null) {
           _mqttClient?.publishMessage(
-              "${widget.settings.mqttsensortopic!}/$subtopic",
+              "${settings.mqttsensortopic!}/$subtopic",
               MqttQos.exactlyOnce,
               _mqttClientPayloadBuilder!.payload!);
           bRet = true;
@@ -441,6 +524,19 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Future<void> wakeupIntent(int wakeTime) async {
     talker.debug("Before AndroidWakeLock");
+
+        // setze Startzeit für Messung
+    _wakeupStartTime = DateTime.now();
+    talker.debug("wakeupIntent started at $_wakeupStartTime, wakeTime=$wakeTime");
+
+    // WebView so früh wie möglich wieder aufnehmen (schnell und ohne zu blockieren)
+    try {
+      // Fire-and-forget: starte Resume asynchron, blockiert nicht den weiteren Ablauf
+      _resumeWebView();
+    } catch (e) {
+      talker.debug("Resume WebView failed: $e");
+    }
+
     await AndroidWakeLock.wakeUp();
     talker.debug('Before WakelockPlus.enable');
     await WakelockPlus.enable();

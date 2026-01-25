@@ -7,17 +7,17 @@ import 'package:gap/gap.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:talker_flutter/talker_flutter.dart';
 import 'package:wallpanel_ng/globals.dart';
-import 'package:wallpanel_ng/model/settingsmodel.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:wallpanel_ng/providers/settings_provider.dart';
 
-class SettingsPage extends StatefulWidget {
-  const SettingsPage({super.key, required this.settings});
-  final SettingsModel settings;
+class SettingsPage extends ConsumerStatefulWidget {
+  const SettingsPage({super.key});
 
   @override
-  State<SettingsPage> createState() => _SettingsPageState();
+  ConsumerState<SettingsPage> createState() => _SettingsPageState();
 }
 
-class _SettingsPageState extends State<SettingsPage> {
+class _SettingsPageState extends ConsumerState<SettingsPage> {
   final TextEditingController _mqttHostController = TextEditingController();
   final TextEditingController _mqttPortController = TextEditingController();
   final TextEditingController _mqttUserController = TextEditingController();
@@ -29,29 +29,28 @@ class _SettingsPageState extends State<SettingsPage> {
 
   @override
   void initState() {
+    super.initState();
     fetchSettings();
+    final notifier = ref.read(settingsNotifierProvider.notifier);
     _mqttHostController
-        .addListener(() => widget.settings.mqtthost = _mqttHostController.text);
+        .addListener(() => notifier.updateMqttHost(_mqttHostController.text));
     _mqttPortController.addListener(() {
       var iPort = int.tryParse(_mqttPortController.text);
-      widget.settings.mqttport = iPort;
+      notifier.updateMqttPort(iPort);
     });
     _mqttUserController
-        .addListener(() => widget.settings.mqttUser = _mqttUserController.text);
+        .addListener(() => notifier.updateMqttUser(_mqttUserController.text));
     _mqttPasswordController.addListener(
-        () => widget.settings.mqttPassword = _mqttPasswordController.text);
+        () => notifier.updateMqttPassword(_mqttPasswordController.text));
     _mqttTopicController.addListener(
-        () => widget.settings.mqttsensortopic = _mqttTopicController.text);
+        () => notifier.updateMqttTopic(_mqttTopicController.text));
     _mqttIntervalController.addListener(() {
       var iInterval = int.tryParse(_mqttIntervalController.text);
-      widget.settings.mqttsensorinterval = iInterval;
+      notifier.updateMqttSensorInterval(iInterval);
     });
     _urlController.addListener(() {
-      setState(() {
-        widget.settings.url = _urlController.text;
-      });
+      notifier.updateUrl(_urlController.text);
     });
-    super.initState();
   }
 
   @override
@@ -78,13 +77,10 @@ class _SettingsPageState extends State<SettingsPage> {
                     children: [
                       const Text("DarkMode"),
                       Checkbox(
-                          value: widget.settings.darkmode ?? false,
+                          value: ref.watch(settingsNotifierProvider).darkmode ?? false,
                           onChanged: (value) {
-                            setState(() {
-                              widget.settings.darkmode = value;
-                              widget.settings.notiDarkmode.value =
-                                  widget.settings.darkmode ?? false;
-                            });
+                            final notifier = ref.read(settingsNotifierProvider.notifier);
+                            notifier.updateDarkmode(value);
                           }),
                     ],
                   ),
@@ -98,7 +94,11 @@ class _SettingsPageState extends State<SettingsPage> {
                       ];
                     },
                     onChanged: (value) {
-                      widget.settings.fabLocation = value;
+                      final notifier = ref.read(settingsNotifierProvider.notifier);
+                      notifier.updateFabLocation(value);
+                      setState(() {
+                        _selFabLocation = value;
+                      });
                     },
                     compareFn: (item1, item2) =>
                         item1.toString() == item2.toString(),
@@ -109,13 +109,10 @@ class _SettingsPageState extends State<SettingsPage> {
                     children: [
                       const Text("Transparent Settings Button"),
                       Checkbox(
-                          value: widget.settings.transparentsettings ?? false,
+                          value: ref.watch(settingsNotifierProvider).transparentsettings ?? false,
                           onChanged: (value) {
-                            setState(() {
-                              widget.settings.transparentsettings = value;
-                              widget.settings.notiTransparentSettings.value =
-                                  widget.settings.transparentsettings ?? false;
-                            });
+                            final notifier = ref.read(settingsNotifierProvider.notifier);
+                            notifier.updateTransparentSettings(value);
                           }),
                     ],
                   ),
@@ -163,11 +160,10 @@ class _SettingsPageState extends State<SettingsPage> {
                     children: [
                       const Text("Enable Sensor Publish"),
                       Checkbox(
-                          value: widget.settings.mqttsensorpublish ?? false,
+                          value: ref.watch(settingsNotifierProvider).mqttsensorpublish ?? false,
                           onChanged: (value) {
-                            setState(() {
-                              widget.settings.mqttsensorpublish = value;
-                            });
+                            final notifier = ref.read(settingsNotifierProvider.notifier);
+                            notifier.updateMqttSensorPublish(value);
                           }),
                     ],
                   ),
@@ -176,11 +172,10 @@ class _SettingsPageState extends State<SettingsPage> {
                     children: [
                       const Text("MQTT Auto Reconnect"),
                       Checkbox(
-                          value: widget.settings.mqttautoreconnect ?? true,
+                          value: ref.watch(settingsNotifierProvider).mqttautoreconnect ?? true,
                           onChanged: (value) {
-                            setState(() {
-                              widget.settings.mqttautoreconnect = value;
-                            });
+                            final notifier = ref.read(settingsNotifierProvider.notifier);
+                            notifier.updateMqttAutoReconnect(value);
                           }),
                     ],
                   ),
@@ -219,74 +214,60 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> saveSettings() async {
     var prefs = SharedPreferencesAsync();
-    var sSettings = jsonEncode(widget.settings.toJson());
+    final settings = ref.read(settingsNotifierProvider);
+    var sSettings = jsonEncode(settings.toJson());
     await prefs.setString("settings", sSettings);
 
-    if (widget.settings.url != null &&
-        Uri.tryParse(widget.settings.url!) != null) {
+    if (settings.url != null && Uri.tryParse(settings.url!) != null) {
       setState(() {
-        widget.settings.notiUrl.value = widget.settings.url!;
+        settings.notiUrl.value = settings.url!;
       });
     }
-    if (widget.settings.fabLocation != null) {
+    if (settings.fabLocation != null) {
       setState(() {
-        widget.settings.notiFabLocation.value = widget.settings.fabLocation!;
+        settings.notiFabLocation.value = settings.fabLocation!;
       });
     }
-    if (widget.settings.notiDarkmode.value != widget.settings.darkmode) {
+    if (settings.notiDarkmode.value != settings.darkmode) {
       setState(() {
-        widget.settings.notiDarkmode.value = widget.settings.darkmode ?? false;
+        settings.notiDarkmode.value = settings.darkmode ?? false;
       });
     }
-    if (widget.settings.notiTransparentSettings.value !=
-        widget.settings.transparentsettings) {
+    if (settings.notiTransparentSettings.value !=
+        settings.transparentsettings) {
       setState(() {
-        widget.settings.notiTransparentSettings.value =
-            widget.settings.transparentsettings ?? false;
+        settings.notiTransparentSettings.value =
+            settings.transparentsettings ?? false;
       });
     }
-    if (widget.settings.notiMqttHost.value != widget.settings.mqtthost) {
+    if (settings.notiMqttHost.value != settings.mqtthost) {
       setState(() {
-        widget.settings.notiMqttHost.value =
-            widget.settings.mqtthost ?? "localhost";
+        settings.notiMqttHost.value = settings.mqtthost ?? "localhost";
       });
     }
-    if (widget.settings.notiMqttPort.value != widget.settings.mqttport) {
+    if (settings.notiMqttPort.value != settings.mqttport) {
       setState(() {
-        widget.settings.notiMqttPort.value = widget.settings.mqttport ?? 1883;
+        settings.notiMqttPort.value = settings.mqttport ?? 1883;
       });
     }
-    if (widget.settings.notiMqttPort.value != widget.settings.mqttport) {
+    if (settings.notiMqttUser.value != settings.mqttUser) {
       setState(() {
-        widget.settings.notiMqttPort.value = widget.settings.mqttport ?? 1883;
+        settings.notiMqttUser.value = settings.mqttUser ?? "";
       });
     }
-    if (widget.settings.notiMqttUser.value !=
-        widget.settings.mqttUser) {
+    if (settings.notiMqttPassword.value != settings.mqttPassword) {
       setState(() {
-        widget.settings.notiMqttUser.value =
-            widget.settings.mqttUser ?? "";
+        settings.notiMqttPassword.value = settings.mqttPassword ?? "";
       });
     }
-    if (widget.settings.notiMqttPassword.value !=
-        widget.settings.mqttPassword) {
+    if (settings.notiMqttTopic.value != settings.mqttsensortopic) {
       setState(() {
-        widget.settings.notiMqttPassword.value =
-            widget.settings.mqttPassword ?? "";
+        settings.notiMqttTopic.value = settings.mqttsensortopic ?? "";
       });
     }
-    if (widget.settings.notiMqttTopic.value !=
-        widget.settings.mqttsensortopic) {
+    if (settings.notiMqttPublish.value != settings.mqttsensorpublish) {
       setState(() {
-        widget.settings.notiMqttTopic.value =
-            widget.settings.mqttsensortopic ?? "";
-      });
-    }
-    if (widget.settings.notiMqttPublish.value !=
-        widget.settings.mqttsensorpublish) {
-      setState(() {
-        widget.settings.notiMqttPublish.value =
-            widget.settings.mqttsensorpublish ?? false;
+        settings.notiMqttPublish.value = settings.mqttsensorpublish ?? false;
       });
     }
   }
@@ -296,17 +277,19 @@ class _SettingsPageState extends State<SettingsPage> {
     var sSettings = await prefs.getString('settings');
     if (sSettings != null) {
       var jSettings = jsonDecode(sSettings);
-      var settings = SettingsModel.fromJson(jSettings);
+      final notifier = ref.read(settingsNotifierProvider.notifier);
+      notifier.loadFromJson(jSettings);
+      final settingsProv = ref.read(settingsNotifierProvider);
       setState(() {
-        _mqttHostController.text = settings.mqtthost ?? "";
-        _mqttPortController.text = settings.mqttport?.toString() ?? "1883";
-        _mqttUserController.text = settings.mqttUser?.toString() ?? "";
-        _mqttPasswordController.text = settings.mqttPassword?.toString() ?? "";
-        _mqttTopicController.text = settings.mqttsensortopic ?? "";
+        _mqttHostController.text = settingsProv.mqtthost ?? "";
+        _mqttPortController.text = settingsProv.mqttport?.toString() ?? "1883";
+        _mqttUserController.text = settingsProv.mqttUser?.toString() ?? "";
+        _mqttPasswordController.text = settingsProv.mqttPassword?.toString() ?? "";
+        _mqttTopicController.text = settingsProv.mqttsensortopic ?? "";
         _mqttIntervalController.text =
-            settings.mqttsensorinterval?.toString() ?? "60";
-        _urlController.text = settings.url ?? "";
-        _selFabLocation = settings.fabLocation;
+            settingsProv.mqttsensorinterval?.toString() ?? "60";
+        _urlController.text = settingsProv.url ?? "";
+        _selFabLocation = settingsProv.fabLocation;
       });
     }
   }
