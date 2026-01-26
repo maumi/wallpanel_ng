@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:android_wake_lock/android_wake_lock.dart';
+import 'package:one_clock/one_clock.dart';
 import 'package:battery_plus/battery_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
@@ -76,11 +77,22 @@ class _MyHomePageState extends ConsumerState<MyHomePage> with WidgetsBindingObse
   Timer? _wakeupPollTimer;
   int _wakeupPollAttempts = 0;
 
+  // Screensaver
+  Timer? _screensaverTimer;
+  bool _isScreensaverActive = false;
+  DateTime? _lastUserActivity;
+  Timer? _digitalClockTimer;
+  String _digitalClockTime = '';
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    // Start screensaver timer on app launch
+    _startScreensaverTimer();
+    _recordUserActivity();
+    talker.debug("Screensaver initialized in initState");
   }
 
   @override
@@ -115,6 +127,34 @@ class _MyHomePageState extends ConsumerState<MyHomePage> with WidgetsBindingObse
         _transparentSettings = cur.transparentsettings;
       });
     }
+
+    // Handle screensaver settings changes
+    if (old.screensaverEnabled != cur.screensaverEnabled) {
+      if (cur.screensaverEnabled == true) {
+        _startScreensaverTimer();
+      } else {
+        _stopScreensaverTimer();
+        if (_isScreensaverActive) {
+          setState(() {
+            _isScreensaverActive = false;
+          });
+        }
+      }
+    }
+    
+    if (old.screensaverInactiveTime != cur.screensaverInactiveTime && cur.screensaverEnabled == true) {
+      _resetScreensaverTimer();
+    }
+    
+    // Handle clock type change when screensaver is active
+    if (old.clockType != cur.clockType && _isScreensaverActive) {
+      talker.debug("Clock type changed while screensaver active: ${old.clockType} -> ${cur.clockType}");
+      if (cur.clockType == 'digital') {
+        _startDigitalClockTimer();
+      } else {
+        _stopDigitalClockTimer();
+      }
+    }
   }
 
   Future<void> initAsync() async {
@@ -129,10 +169,10 @@ class _MyHomePageState extends ConsumerState<MyHomePage> with WidgetsBindingObse
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     talker.debug("didChangeAppLifecycleState: $state at ${DateTime.now()}");
-    // wenn App in den Hintergrund geht: WebView pausieren
     if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
       _pauseWebView();
       _webViewPausedByApp = true;
+      _stopScreensaverTimer();
     } else if (state == AppLifecycleState.resumed) {
       _appResumedTime = DateTime.now();
       if (_wakeupStartTime != null) {
@@ -144,7 +184,92 @@ class _MyHomePageState extends ConsumerState<MyHomePage> with WidgetsBindingObse
         _resumeWebView();
         _webViewPausedByApp = false;
       }
+      _startScreensaverTimer();
+      _recordUserActivity();
     }
+  }
+
+  void _recordUserActivity() {
+    talker.debug("_recordUserActivity called at ${DateTime.now()}");
+    _lastUserActivity = DateTime.now();
+    if (_isScreensaverActive) {
+      talker.debug("Deactivating screensaver due to user activity");
+      setState(() {
+        _isScreensaverActive = false;
+      });
+    }
+    _resetScreensaverTimer();
+  }
+
+  void _resetScreensaverTimer() {
+    final settings = widget.settings;
+    talker.debug("_resetScreensaverTimer called, screensaverEnabled: ${settings.screensaverEnabled}");
+    if (settings.screensaverEnabled == true) {
+      final inactiveTime = settings.screensaverInactiveTime ?? 300;
+      talker.debug("Setting screensaver timer for $inactiveTime seconds");
+      _screensaverTimer?.cancel();
+      _screensaverTimer = Timer(Duration(seconds: inactiveTime), () {
+        if (_lastUserActivity != null) {
+          final now = DateTime.now();
+          final diff = now.difference(_lastUserActivity!).inSeconds;
+          talker.debug("Timer fired: $diff seconds since last activity");
+          if (diff >= inactiveTime) {
+            setState(() {
+              _isScreensaverActive = true;
+            });
+            talker.debug("Screensaver activated after $diff seconds");
+            // Start digital clock timer if needed
+            final clockType = widget.settings.clockType ?? 'analog';
+            if (clockType == 'digital') {
+              _startDigitalClockTimer();
+            }
+          }
+        }
+      });
+    } else {
+      talker.debug("Screensaver is disabled, not setting timer");
+    }
+  }
+
+  void _startScreensaverTimer() {
+    final settings = widget.settings;
+    if (settings.screensaverEnabled == true) {
+      _resetScreensaverTimer();
+    }
+  }
+
+  void _stopScreensaverTimer() {
+    _screensaverTimer?.cancel();
+    _stopDigitalClockTimer();
+  }
+
+  void _startDigitalClockTimer() {
+    _stopDigitalClockTimer();
+    _updateDigitalClockTime();
+    _digitalClockTimer = Timer.periodic(Duration(seconds: 1), (_) {
+      _updateDigitalClockTime();
+    });
+  }
+
+  void _stopDigitalClockTimer() {
+    _digitalClockTimer?.cancel();
+  }
+
+  void _updateDigitalClockTime() {
+    final now = DateTime.now();
+    final hours = now.hour.toString().padLeft(2, '0');
+    final minutes = now.minute.toString().padLeft(2, '0');
+    final seconds = now.second.toString().padLeft(2, '0');
+    setState(() {
+      _digitalClockTime = '$hours:$minutes:$seconds';
+    });
+  }
+
+  @override
+  void dispose() {
+    _screensaverTimer?.cancel();
+    _digitalClockTimer?.cancel();
+    super.dispose();
   }
 
 // navigation timing helper removed (unused). Keep code in VCS if needed later.
@@ -193,13 +318,51 @@ class _MyHomePageState extends ConsumerState<MyHomePage> with WidgetsBindingObse
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: webView(),
-      floatingActionButton: fab(),
-      floatingActionButtonLocation: mapFabLocations.containsKey(_fabLocation)
-          ? mapFabLocations[_fabLocation]
-          : FloatingActionButtonLocation.endDocked,
+    return GestureDetector(
+      onTap: () => _recordUserActivity(),
+      onPanStart: (_) => _recordUserActivity(),
+      child: Scaffold(
+        body: _isScreensaverActive ? screensaver() : webView(),
+        floatingActionButton: fab(),
+        floatingActionButtonLocation: mapFabLocations.containsKey(_fabLocation)
+            ? mapFabLocations[_fabLocation]
+            : FloatingActionButtonLocation.endDocked,
+      ),
     );
+  }
+
+  Widget screensaver() {
+    final settings = widget.settings;
+    final mode = settings.screensaverMode ?? 'clock';
+    final clockType = settings.clockType ?? 'analog';
+    
+    if (mode == 'black') {
+      return Container(
+        color: Colors.black,
+      );
+    } else {
+      return Container(
+        color: Colors.black,
+        child: Center(
+          child: clockType == 'analog' 
+            ? AspectRatio(
+                aspectRatio: 1.0,
+                child: AnalogClock(
+                    showNumbers: true,
+                    showTicks: true,
+                  ),
+              )
+            : Text(
+                _digitalClockTime,
+                style: TextStyle(
+                  fontSize: 120,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+        ),
+      );
+    }
   }
 
   Widget webView() {
@@ -528,3 +691,4 @@ class _MyHomePageState extends ConsumerState<MyHomePage> with WidgetsBindingObse
     await WakelockPlus.disable();
   }
 }
+

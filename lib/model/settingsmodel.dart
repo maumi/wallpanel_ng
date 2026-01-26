@@ -12,6 +12,10 @@ class SettingsModel {
     this.mqttsensorpublish,
     this.mqttautoreconnect,
     this.url,
+    this.screensaverEnabled,
+    this.screensaverInactiveTime,
+    this.screensaverMode,
+    this.clockType,
   });
 
   bool? darkmode;
@@ -26,6 +30,10 @@ class SettingsModel {
   bool? mqttsensorpublish;
   bool? mqttautoreconnect;
   String? url;
+  bool? screensaverEnabled;
+  int? screensaverInactiveTime;
+  String? screensaverMode; // 'clock' or 'black'
+  String? clockType; // 'analog' or 'digital'
 
   factory SettingsModel.fromJson(Map<String, dynamic> json) {
     return SettingsModel(
@@ -41,6 +49,10 @@ class SettingsModel {
       mqttsensorpublish: json["mqttsensorpublish"],
       mqttautoreconnect: json["mqttautoreconnect"],
       url: json["url"],
+      screensaverEnabled: json["screensaverEnabled"],
+      screensaverInactiveTime: json["screensaverInactiveTime"],
+      screensaverMode: json["screensaverMode"],
+      clockType: json["clockType"],
     );
   }
 
@@ -57,6 +69,10 @@ class SettingsModel {
         "mqttsensorpublish": mqttsensorpublish,
         "mqttautoreconnect": mqttautoreconnect,
         "url": url,
+        "screensaverEnabled": screensaverEnabled,
+        "screensaverInactiveTime": screensaverInactiveTime,
+        "screensaverMode": screensaverMode,
+        "clockType": clockType,
       };
 
   SettingsModel copyWith({
@@ -72,6 +88,10 @@ class SettingsModel {
     bool? mqttsensorpublish,
     bool? mqttautoreconnect,
     String? url,
+    bool? screensaverEnabled,
+    int? screensaverInactiveTime,
+    String? screensaverMode,
+    String? clockType,
   }) {
     return SettingsModel(
       darkmode: darkmode ?? this.darkmode,
@@ -86,6 +106,10 @@ class SettingsModel {
       mqttsensorpublish: mqttsensorpublish ?? this.mqttsensorpublish,
       mqttautoreconnect: mqttautoreconnect ?? this.mqttautoreconnect,
       url: url ?? this.url,
+      screensaverEnabled: screensaverEnabled ?? this.screensaverEnabled,
+      screensaverInactiveTime: screensaverInactiveTime ?? this.screensaverInactiveTime,
+      screensaverMode: screensaverMode ?? this.screensaverMode,
+      clockType: clockType ?? this.clockType,
     );
   }
 

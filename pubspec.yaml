@@ -44,6 +44,7 @@ dependencies:
   flutter_inappwebview: ^6.1.5
   dropdown_search: ^6.0.2
   uuid: ^4.5.1
+  one_clock: ^2.0.3
 
 dev_dependencies:
   flutter_test:

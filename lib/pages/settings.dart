@@ -25,7 +25,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   final TextEditingController _mqttTopicController = TextEditingController();
   final TextEditingController _mqttIntervalController = TextEditingController();
   final TextEditingController _urlController = TextEditingController();
+  final TextEditingController _screensaverInactiveTimeController = TextEditingController();
   String? _selFabLocation;
+  String? _selScreensaverMode;
+  String? _selClockType;
 
   @override
   void initState() {
@@ -50,6 +53,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     });
     _urlController.addListener(() {
       notifier.updateUrl(_urlController.text);
+    });
+    _screensaverInactiveTimeController.addListener(() {
+      var iTime = int.tryParse(_screensaverInactiveTimeController.text);
+      notifier.updateScreensaverInactiveTime(iTime);
     });
   }
 
@@ -116,6 +123,66 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                           }),
                     ],
                   ),
+                  const Text(
+                      style:
+                          TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                      "Screensaver Settings"),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text("Enable Screensaver"),
+                      Checkbox(
+                          value: ref.watch(settingsNotifierProvider).screensaverEnabled ?? false,
+                          onChanged: (value) {
+                            final notifier = ref.read(settingsNotifierProvider.notifier);
+                            notifier.updateScreensaverEnabled(value);
+                          }),
+                    ],
+                  ),
+                  TextField(
+                    textAlign: TextAlign.right,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    controller: _screensaverInactiveTimeController,
+                    decoration: InputDecoration(
+                        label: const Text("Inactivity Time (seconds)")),
+                  ),
+                  DropdownSearch<String>(
+                    items: (filter, loadProps) {
+                      return [
+                        "clock",
+                        "black",
+                      ];
+                    },
+                    onChanged: (value) {
+                      final notifier = ref.read(settingsNotifierProvider.notifier);
+                      notifier.updateScreensaverMode(value);
+                      setState(() {
+                        _selScreensaverMode = value;
+                      });
+                    },
+                    compareFn: (item1, item2) =>
+                        item1.toString() == item2.toString(),
+                    selectedItem: _selScreensaverMode,
+                  ),
+                  DropdownSearch<String>(
+                    items: (filter, loadProps) {
+                      return [
+                        "analog",
+                        "digital",
+                      ];
+                    },
+                    onChanged: (value) {
+                      final notifier = ref.read(settingsNotifierProvider.notifier);
+                      notifier.updateClockType(value);
+                      setState(() {
+                        _selClockType = value;
+                      });
+                    },
+                    compareFn: (item1, item2) =>
+                        item1.toString() == item2.toString(),
+                    selectedItem: _selClockType,
+                  ),
+                  const Gap(20),
                   const Text(
                       style:
                           TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
@@ -215,8 +282,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   Future<void> saveSettings() async {
     final prefs = SharedPreferencesAsync();
     final settings = ref.read(settingsNotifierProvider);
+    talker.debug("Saving settings. clockType: ${settings.clockType}, screensaverMode: ${settings.screensaverMode}");
     final sSettings = jsonEncode(settings.toJson());
     await prefs.setString("settings", sSettings);
+    talker.debug("Settings saved successfully");
   }
 
   Future<void> fetchSettings() async {
@@ -228,6 +297,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       notifier.loadFromJson(jSettings);
       final settingsProv = ref.read(settingsNotifierProvider);
       
+      talker.debug("Fetched settings. clockType: ${settingsProv.clockType}, screensaverMode: ${settingsProv.screensaverMode}");
+      
       _mqttHostController.text = settingsProv.mqtthost ?? "";
       _mqttPortController.text = settingsProv.mqttport?.toString() ?? "1883";
       _mqttUserController.text = settingsProv.mqttUser ?? "";
@@ -236,6 +307,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       _mqttIntervalController.text = settingsProv.mqttsensorinterval?.toString() ?? "60";
       _urlController.text = settingsProv.url ?? "";
       _selFabLocation = settingsProv.fabLocation;
+      _screensaverInactiveTimeController.text = settingsProv.screensaverInactiveTime?.toString() ?? "300";
+      _selScreensaverMode = settingsProv.screensaverMode ?? "clock";
+      _selClockType = settingsProv.clockType ?? "analog";
+      
+      talker.debug("Set _selClockType to: $_selClockType");
     }
   }
 }
