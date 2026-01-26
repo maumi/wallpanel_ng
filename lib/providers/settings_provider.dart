@@ -5,107 +5,56 @@ class SettingsNotifier extends StateNotifier<SettingsModel> {
   SettingsNotifier() : super(SettingsModel());
 
   void updateDarkmode(bool? value) {
-    state.darkmode = value;
-    // keep legacy ValueNotifier in sync
-    state.notiDarkmode.value = value ?? false;
-    state = state;
+    state = state.copyWith(darkmode: value);
   }
 
   void updateUrl(String value) {
-    state.url = value;
-    state.notiUrl.value = value;
-    state = state;
+    state = state.copyWith(url: value);
   }
 
   void updateFabLocation(String? value) {
-    state.fabLocation = value;
-    state.notiFabLocation.value = value ?? "";
-    state = state;
+    state = state.copyWith(fabLocation: value);
   }
 
   void updateTransparentSettings(bool? value) {
-    state.transparentsettings = value;
-    state.notiTransparentSettings.value = value ?? false;
-    state = state;
+    state = state.copyWith(transparentsettings: value);
   }
 
   void updateMqttHost(String value) {
-    state.mqtthost = value;
-    state.notiMqttHost.value = value;
-    state = state;
+    state = state.copyWith(mqtthost: value);
   }
 
   void updateMqttPort(int? value) {
-    state.mqttport = value;
-    state.notiMqttPort.value = value ?? 1883;
-    state = state;
+    state = state.copyWith(mqttport: value);
   }
 
   void updateMqttTopic(String value) {
-    state.mqttsensortopic = value;
-    state.notiMqttTopic.value = value;
-    state = state;
+    state = state.copyWith(mqttsensortopic: value);
   }
 
   void updateMqttUser(String value) {
-    state.mqttUser = value;
-    state.notiMqttUser.value = value;
-    state = state;
+    state = state.copyWith(mqttUser: value);
   }
 
   void updateMqttPassword(String value) {
-    state.mqttPassword = value;
-    state.notiMqttPassword.value = value;
-    state = state;
+    state = state.copyWith(mqttPassword: value);
   }
 
   void updateMqttSensorInterval(int? value) {
-    state.mqttsensorinterval = value;
-    state.notiMqttInterval.value = value ?? 60;
-    state = state;
+    state = state.copyWith(mqttsensorinterval: value);
   }
 
   void updateMqttSensorPublish(bool? value) {
-    state.mqttsensorpublish = value;
-    state.notiMqttPublish.value = value ?? false;
-    state = state;
+    state = state.copyWith(mqttsensorpublish: value);
   }
 
   void updateMqttAutoReconnect(bool? value) {
-    state.mqttautoreconnect = value;
-    state = state;
+    state = state.copyWith(mqttautoreconnect: value);
   }
 
   void loadFromJson(Map<String, dynamic> json) {
     final loaded = SettingsModel.fromJson(json);
-    // copy fields
-    state.darkmode = loaded.darkmode;
-    state.transparentsettings = loaded.transparentsettings;
-    state.fabLocation = loaded.fabLocation;
-    state.mqtthost = loaded.mqtthost;
-    state.mqttport = loaded.mqttport;
-    state.mqttUser = loaded.mqttUser;
-    state.mqttPassword = loaded.mqttPassword;
-    state.mqttsensortopic = loaded.mqttsensortopic;
-    state.mqttsensorinterval = loaded.mqttsensorinterval;
-    state.mqttsensorpublish = loaded.mqttsensorpublish;
-    state.mqttautoreconnect = loaded.mqttautoreconnect;
-    state.url = loaded.url;
-
-    // sync notifiers
-    state.notiUrl.value = state.url ?? "";
-    state.notiFabLocation.value = state.fabLocation ?? "";
-    state.notiDarkmode.value = state.darkmode ?? false;
-    state.notiTransparentSettings.value = state.transparentsettings ?? false;
-    state.notiMqttHost.value = state.mqtthost ?? "";
-    state.notiMqttPort.value = state.mqttport ?? 1883;
-    state.notiMqttUser.value = state.mqttUser ?? "";
-    state.notiMqttPassword.value = state.mqttPassword ?? "";
-    state.notiMqttTopic.value = state.mqttsensortopic ?? "";
-    state.notiMqttInterval.value = state.mqttsensorinterval ?? 60;
-    state.notiMqttPublish.value = state.mqttsensorpublish ?? false;
-
-    state = state;
+    state = loaded;
   }
 }
 

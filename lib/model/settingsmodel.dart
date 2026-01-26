@@ -1,19 +1,18 @@
-import 'package:flutter/material.dart';
-
 class SettingsModel {
-  SettingsModel(
-      {this.darkmode,
-      this.transparentsettings,
-      this.fabLocation,
-      this.mqtthost,
-      this.mqttport,
-      this.mqttUser,
-      this.mqttPassword,
-      this.mqttsensortopic,
-      this.mqttsensorinterval,
-      this.mqttsensorpublish,
-      this.mqttautoreconnect,
-      this.url});
+  SettingsModel({
+    this.darkmode,
+    this.transparentsettings,
+    this.fabLocation,
+    this.mqtthost,
+    this.mqttport,
+    this.mqttUser,
+    this.mqttPassword,
+    this.mqttsensortopic,
+    this.mqttsensorinterval,
+    this.mqttsensorpublish,
+    this.mqttautoreconnect,
+    this.url,
+  });
 
   bool? darkmode;
   bool? transparentsettings;
@@ -27,18 +26,6 @@ class SettingsModel {
   bool? mqttsensorpublish;
   bool? mqttautoreconnect;
   String? url;
-  final ValueNotifier<String> notiUrl = ValueNotifier<String>("");
-  final ValueNotifier<String> notiFabLocation = ValueNotifier<String>("");
-  final ValueNotifier<bool> notiDarkmode = ValueNotifier<bool>(false);
-  final ValueNotifier<bool> notiTransparentSettings =
-      ValueNotifier<bool>(false);
-  final ValueNotifier<String> notiMqttHost = ValueNotifier<String>("");
-  final ValueNotifier<int> notiMqttPort = ValueNotifier<int>(1883);
-  final ValueNotifier<String> notiMqttUser = ValueNotifier<String>("");
-  final ValueNotifier<String> notiMqttPassword = ValueNotifier<String>("");
-  final ValueNotifier<String> notiMqttTopic = ValueNotifier<String>("");
-  final ValueNotifier<int> notiMqttInterval = ValueNotifier<int>(60);
-  final ValueNotifier<bool> notiMqttPublish = ValueNotifier<bool>(false);
 
   factory SettingsModel.fromJson(Map<String, dynamic> json) {
     return SettingsModel(
@@ -72,8 +59,38 @@ class SettingsModel {
         "url": url,
       };
 
+  SettingsModel copyWith({
+    bool? darkmode,
+    bool? transparentsettings,
+    String? fabLocation,
+    String? mqtthost,
+    int? mqttport,
+    String? mqttUser,
+    String? mqttPassword,
+    String? mqttsensortopic,
+    int? mqttsensorinterval,
+    bool? mqttsensorpublish,
+    bool? mqttautoreconnect,
+    String? url,
+  }) {
+    return SettingsModel(
+      darkmode: darkmode ?? this.darkmode,
+      transparentsettings: transparentsettings ?? this.transparentsettings,
+      fabLocation: fabLocation ?? this.fabLocation,
+      mqtthost: mqtthost ?? this.mqtthost,
+      mqttport: mqttport ?? this.mqttport,
+      mqttUser: mqttUser ?? this.mqttUser,
+      mqttPassword: mqttPassword ?? this.mqttPassword,
+      mqttsensortopic: mqttsensortopic ?? this.mqttsensortopic,
+      mqttsensorinterval: mqttsensorinterval ?? this.mqttsensorinterval,
+      mqttsensorpublish: mqttsensorpublish ?? this.mqttsensorpublish,
+      mqttautoreconnect: mqttautoreconnect ?? this.mqttautoreconnect,
+      url: url ?? this.url,
+    );
+  }
+
   @override
   String toString() {
-    return "$darkmode, $transparentsettings, $fabLocation, $mqtthost, $mqttport, $mqttUser, $mqttPassword, $mqttsensortopic, $mqttsensorinterval, $mqttsensorpublish, $mqttautoreconnect, $url, ";
+    return "SettingsModel(darkmode: $darkmode, transparentsettings: $transparentsettings, fabLocation: $fabLocation, url: $url)";
   }
 }

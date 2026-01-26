@@ -213,84 +213,29 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 
   Future<void> saveSettings() async {
-    var prefs = SharedPreferencesAsync();
+    final prefs = SharedPreferencesAsync();
     final settings = ref.read(settingsNotifierProvider);
-    var sSettings = jsonEncode(settings.toJson());
+    final sSettings = jsonEncode(settings.toJson());
     await prefs.setString("settings", sSettings);
-
-    if (settings.url != null && Uri.tryParse(settings.url!) != null) {
-      setState(() {
-        settings.notiUrl.value = settings.url!;
-      });
-    }
-    if (settings.fabLocation != null) {
-      setState(() {
-        settings.notiFabLocation.value = settings.fabLocation!;
-      });
-    }
-    if (settings.notiDarkmode.value != settings.darkmode) {
-      setState(() {
-        settings.notiDarkmode.value = settings.darkmode ?? false;
-      });
-    }
-    if (settings.notiTransparentSettings.value !=
-        settings.transparentsettings) {
-      setState(() {
-        settings.notiTransparentSettings.value =
-            settings.transparentsettings ?? false;
-      });
-    }
-    if (settings.notiMqttHost.value != settings.mqtthost) {
-      setState(() {
-        settings.notiMqttHost.value = settings.mqtthost ?? "localhost";
-      });
-    }
-    if (settings.notiMqttPort.value != settings.mqttport) {
-      setState(() {
-        settings.notiMqttPort.value = settings.mqttport ?? 1883;
-      });
-    }
-    if (settings.notiMqttUser.value != settings.mqttUser) {
-      setState(() {
-        settings.notiMqttUser.value = settings.mqttUser ?? "";
-      });
-    }
-    if (settings.notiMqttPassword.value != settings.mqttPassword) {
-      setState(() {
-        settings.notiMqttPassword.value = settings.mqttPassword ?? "";
-      });
-    }
-    if (settings.notiMqttTopic.value != settings.mqttsensortopic) {
-      setState(() {
-        settings.notiMqttTopic.value = settings.mqttsensortopic ?? "";
-      });
-    }
-    if (settings.notiMqttPublish.value != settings.mqttsensorpublish) {
-      setState(() {
-        settings.notiMqttPublish.value = settings.mqttsensorpublish ?? false;
-      });
-    }
   }
 
   Future<void> fetchSettings() async {
-    var prefs = SharedPreferencesAsync();
-    var sSettings = await prefs.getString('settings');
+    final prefs = SharedPreferencesAsync();
+    final sSettings = await prefs.getString('settings');
     if (sSettings != null) {
-      var jSettings = jsonDecode(sSettings);
+      final jSettings = jsonDecode(sSettings);
       final notifier = ref.read(settingsNotifierProvider.notifier);
       notifier.loadFromJson(jSettings);
       final settingsProv = ref.read(settingsNotifierProvider);
-      setState(() {
-        _mqttHostController.text = settingsProv.mqtthost ?? "";
-        _mqttPortController.text = settingsProv.mqttport?.toString() ?? "1883";
-        _mqttUserController.text = settingsProv.mqttUser?.toString() ?? "";
-        _mqttPasswordController.text = settingsProv.mqttPassword?.toString() ?? "";
-        _mqttTopicController.text = settingsProv.mqttsensortopic ?? "";
-        _mqttIntervalController.text =
-            settingsProv.mqttsensorinterval?.toString() ?? "60";
-        _urlController.text = settingsProv.url ?? "";
-        _selFabLocation = settingsProv.fabLocation;
-      });
+      
+      _mqttHostController.text = settingsProv.mqtthost ?? "";
+      _mqttPortController.text = settingsProv.mqttport?.toString() ?? "1883";
+      _mqttUserController.text = settingsProv.mqttUser ?? "";
+      _mqttPasswordController.text = settingsProv.mqttPassword ?? "";
+      _mqttTopicController.text = settingsProv.mqttsensortopic ?? "";
+      _mqttIntervalController.text = settingsProv.mqttsensorinterval?.toString() ?? "60";
+      _urlController.text = settingsProv.url ?? "";
+      _selFabLocation = settingsProv.fabLocation;
     }
   }
 }

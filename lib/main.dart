@@ -118,25 +118,12 @@ class _MyHomePageState extends ConsumerState<MyHomePage> with WidgetsBindingObse
   }
 
   Future<void> initAsync() async {
-    WidgetsFlutterBinding.ensureInitialized();
     final settings = ref.read(settingsNotifierProvider);
     if (settings.url != null && webViewController != null) {
       await webViewController!
           .loadUrl(urlRequest: URLRequest(url: WebUri(settings.url!)));
-      //await InAppWebViewController.setWebContentsDebuggingEnabled(true);
     }
     await setupMqtt();
-
-    // if (settings.mqttsensorpublish == true) {
-    //   _publishTimer?.cancel();
-    //   _publishTimer = null;
-    //   _publishTimer = Timer.periodic(
-    //     Duration(seconds: settings.mqttsensorinterval ?? 60),
-    //     (timer) async {
-    //       await publishBatteryState();
-    //     },
-    //   );
-    // }
   }
 
   @override
@@ -162,20 +149,12 @@ class _MyHomePageState extends ConsumerState<MyHomePage> with WidgetsBindingObse
 
 // navigation timing helper removed (unused). Keep code in VCS if needed later.
 
-Future<void> _pauseWebView() async {
- try {
-      // Plugin-API (falls implementiert)
+  Future<void> _pauseWebView() async {
+    try {
       await webViewController?.pause();
-    } catch (_) {}
-    // try {
-    //   // Fallback: stoppe Medien/Animationen per JS (geringere Risiko-API)
-    //   await webViewController?.evaluateJavascript(source: """
-    //     try {
-    //       document.querySelectorAll('video,audio').forEach(v => { try { v.pause(); } catch(e){} });
-    //       window.__wallpanel_paused = true;
-    //     } catch(e){}
-    //   """);
-    // } catch (_) {}
+    } catch (_) {
+      // WebView pause failed, continuing anyway
+    }
   }
 
   Future<void> _resumeWebView() async {
@@ -455,16 +434,19 @@ Future<void> _pauseWebView() async {
           MqttConnectionState.connected) {
         _mqttClient?.disconnect();
       }
-      var clientId = Uuid().v4().toString();
-        final settings = ref.read(settingsNotifierProvider);
-        if (settings.mqtthost != null && settings.mqttport != null) {
-        var mqttClient = MqttServerClient.withPort(
-          settings.notiMqttHost.value,
+      
+      final settings = ref.read(settingsNotifierProvider);
+      if (settings.mqtthost != null && settings.mqttport != null) {
+        final clientId = Uuid().v4();
+        final mqttClient = MqttServerClient.withPort(
+          settings.mqtthost!,
           clientId,
-          settings.notiMqttPort.value);
+          settings.mqttport!);
         mqttClient.keepAlivePeriod = 60;
-        var mqttStatus = await mqttClient.connect(
-          settings.mqttUser, settings.mqttPassword);
+        
+        final mqttStatus = await mqttClient.connect(
+          settings.mqttUser,
+          settings.mqttPassword);
         talker.debug(
             "Connected to MQTT Server with state: $mqttStatus and identifier: $clientId");
         _mqttClient = mqttClient;
@@ -523,20 +505,14 @@ Future<void> _pauseWebView() async {
   }
 
   Future<void> wakeupIntent(int wakeTime) async {
-    talker.debug("Before AndroidWakeLock");
-
-        // setze Startzeit für Messung
+    // Setze Startzeit für Messung
     _wakeupStartTime = DateTime.now();
     talker.debug("wakeupIntent started at $_wakeupStartTime, wakeTime=$wakeTime");
 
     // WebView so früh wie möglich wieder aufnehmen (schnell und ohne zu blockieren)
-    try {
-      // Fire-and-forget: starte Resume asynchron, blockiert nicht den weiteren Ablauf
-      _resumeWebView();
-    } catch (e) {
-      talker.debug("Resume WebView failed: $e");
-    }
+    _resumeWebView();
 
+    talker.debug("Before AndroidWakeLock.wakeUp");
     await AndroidWakeLock.wakeUp();
     talker.debug('Before WakelockPlus.enable');
     await WakelockPlus.enable();
