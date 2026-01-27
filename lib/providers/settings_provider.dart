@@ -1,10 +1,16 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_riverpod/legacy.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:wallpanel_ng/model/settingsmodel.dart';
 import 'package:wallpanel_ng/globals.dart';
 
-class SettingsNotifier extends StateNotifier<SettingsModel> {
-  SettingsNotifier() : super(SettingsModel());
+part 'settings_provider.g.dart';
+
+/// Provider for the current settings
+@riverpod
+class SettingsNotifier extends _$SettingsNotifier {
+  @override
+  SettingsModel build() {
+    return SettingsModel();
+  }
 
   void updateDarkmode(bool? value) {
     state = state.copyWith(darkmode: value);
@@ -78,7 +84,3 @@ class SettingsNotifier extends StateNotifier<SettingsModel> {
     state = loaded;
   }
 }
-
-final settingsNotifierProvider = StateNotifierProvider<SettingsNotifier, SettingsModel>((ref) {
-  return SettingsNotifier();
-});

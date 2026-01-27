@@ -32,7 +32,7 @@ class MyApp extends ConsumerStatefulWidget {
 class _MyAppState extends ConsumerState<MyApp> {
   @override
   Widget build(BuildContext context) {
-    final settings = ref.watch(settingsNotifierProvider);
+    final settings = ref.watch(settingsProvider);
     final useDark = settings.darkmode ?? false;
     return MaterialApp(
       title: 'Wallpanel-ng',
@@ -163,7 +163,7 @@ class _MyHomePageState extends ConsumerState<MyHomePage> with WidgetsBindingObse
   }
 
   Future<void> initAsync() async {
-    final settings = ref.read(settingsNotifierProvider);
+    final settings = ref.read(settingsProvider);
     if (settings.url != null && webViewController != null) {
       await webViewController!
           .loadUrl(urlRequest: URLRequest(url: WebUri(settings.url!)));
@@ -375,7 +375,7 @@ class _MyHomePageState extends ConsumerState<MyHomePage> with WidgetsBindingObse
         ? biggerCircularProgressIndicator()
         : InAppWebView(
             initialUrlRequest: URLRequest(
-              url: WebUri(ref.read(settingsNotifierProvider).url ?? "http://google.com")),
+              url: WebUri(ref.read(settingsProvider).url ?? "http://google.com")),
             initialSettings: InAppWebViewSettings(
               forceDark: ForceDark.ON,
               mediaPlaybackRequiresUserGesture: false,
@@ -555,9 +555,9 @@ class _MyHomePageState extends ConsumerState<MyHomePage> with WidgetsBindingObse
     var sSettings = await prefs.getString('settings');
     if (sSettings != null) {
       var jSettings = jsonDecode(sSettings);
-      final notifier = ref.read(settingsNotifierProvider.notifier);
+      final notifier = ref.read(settingsProvider.notifier);
       notifier.loadFromJson(jSettings);
-      final settings = ref.read(settingsNotifierProvider);
+      final settings = ref.read(settingsProvider);
       if (settings.url != null) {
         webViewController?.loadUrl(
             urlRequest: URLRequest(url: WebUri(settings.url!)));
@@ -573,14 +573,14 @@ class _MyHomePageState extends ConsumerState<MyHomePage> with WidgetsBindingObse
     await connectMqtt();
     setMqttClientBuilder();
     await subscribeMqtt();
-    final settings = ref.read(settingsNotifierProvider);
+    final settings = ref.read(settingsProvider);
     if (settings.mqttsensortopic != null) {
       subscribeTopic(settings.mqttsensortopic!);
     }
   }
 
   Future<void> connectMqtt() async {
-    final settings = ref.read(settingsNotifierProvider);
+    final settings = ref.read(settingsProvider);
     if (settings.mqtthost != null) {
       var clientId = Uuid().v4().toString();
       var mqttClient = MqttServerClient.withPort(settings.mqtthost!,
@@ -603,7 +603,7 @@ class _MyHomePageState extends ConsumerState<MyHomePage> with WidgetsBindingObse
         _mqttClient?.disconnect();
       }
       
-      final settings = ref.read(settingsNotifierProvider);
+      final settings = ref.read(settingsProvider);
       if (settings.mqtthost != null && settings.mqttport != null) {
         final clientId = Uuid().v4();
         final mqttClient = MqttServerClient.withPort(
@@ -652,7 +652,7 @@ class _MyHomePageState extends ConsumerState<MyHomePage> with WidgetsBindingObse
 
   Future<bool> publishMessage(String subtopic, String payload) async {
     var bRet = false;
-    final settings = ref.read(settingsNotifierProvider);
+    final settings = ref.read(settingsProvider);
     if (settings.mqttsensortopic != null) {
       try {
         _mqttClientPayloadBuilder?.clear();

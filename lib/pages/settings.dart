@@ -36,7 +36,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> with WidgetsBinding
     // Pause screensaver timer when settings page is opened
     pauseScreensaverTimer();
     fetchSettings();
-    final notifier = ref.read(settingsNotifierProvider.notifier);
+    final notifier = ref.read(settingsProvider.notifier);
     _mqttHostController
         .addListener(() => notifier.updateMqttHost(_mqttHostController.text));
     _mqttPortController.addListener(() {
@@ -101,9 +101,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> with WidgetsBinding
                     children: [
                       const Text("DarkMode"),
                       Checkbox(
-                          value: ref.watch(settingsNotifierProvider).darkmode ?? false,
+                          value: ref.watch(settingsProvider).darkmode ?? false,
                           onChanged: (value) {
-                            final notifier = ref.read(settingsNotifierProvider.notifier);
+                            final notifier = ref.read(settingsProvider.notifier);
                             notifier.updateDarkmode(value);
                           }),
                     ],
@@ -118,7 +118,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> with WidgetsBinding
                       ];
                     },
                     onChanged: (value) {
-                      final notifier = ref.read(settingsNotifierProvider.notifier);
+                      final notifier = ref.read(settingsProvider.notifier);
                       notifier.updateFabLocation(value);
                       setState(() {
                         _selFabLocation = value;
@@ -133,9 +133,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> with WidgetsBinding
                     children: [
                       const Text("Transparent Settings Button"),
                       Checkbox(
-                          value: ref.watch(settingsNotifierProvider).transparentsettings ?? false,
+                          value: ref.watch(settingsProvider).transparentsettings ?? false,
                           onChanged: (value) {
-                            final notifier = ref.read(settingsNotifierProvider.notifier);
+                            final notifier = ref.read(settingsProvider.notifier);
                             notifier.updateTransparentSettings(value);
                           }),
                     ],
@@ -149,9 +149,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> with WidgetsBinding
                     children: [
                       const Text("Enable Screensaver"),
                       Checkbox(
-                          value: ref.watch(settingsNotifierProvider).screensaverEnabled ?? false,
+                          value: ref.watch(settingsProvider).screensaverEnabled ?? false,
                           onChanged: (value) {
-                            final notifier = ref.read(settingsNotifierProvider.notifier);
+                            final notifier = ref.read(settingsProvider.notifier);
                             notifier.updateScreensaverEnabled(value);
                           }),
                     ],
@@ -171,7 +171,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> with WidgetsBinding
                       ];
                     },
                     onChanged: (value) {
-                      final notifier = ref.read(settingsNotifierProvider.notifier);
+                      final notifier = ref.read(settingsProvider.notifier);
                       notifier.updateScreensaverMode(value);
                       setState(() {
                         _selScreensaverMode = value;
@@ -189,7 +189,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> with WidgetsBinding
                       ];
                     },
                     onChanged: (value) {
-                      final notifier = ref.read(settingsNotifierProvider.notifier);
+                      final notifier = ref.read(settingsProvider.notifier);
                       notifier.updateClockType(value);
                       setState(() {
                         _selClockType = value;
@@ -244,9 +244,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> with WidgetsBinding
                     children: [
                       const Text("Enable Sensor Publish"),
                       Checkbox(
-                          value: ref.watch(settingsNotifierProvider).mqttsensorpublish ?? false,
+                          value: ref.watch(settingsProvider).mqttsensorpublish ?? false,
                           onChanged: (value) {
-                            final notifier = ref.read(settingsNotifierProvider.notifier);
+                            final notifier = ref.read(settingsProvider.notifier);
                             notifier.updateMqttSensorPublish(value);
                           }),
                     ],
@@ -256,9 +256,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> with WidgetsBinding
                     children: [
                       const Text("MQTT Auto Reconnect"),
                       Checkbox(
-                          value: ref.watch(settingsNotifierProvider).mqttautoreconnect ?? true,
+                          value: ref.watch(settingsProvider).mqttautoreconnect ?? true,
                           onChanged: (value) {
-                            final notifier = ref.read(settingsNotifierProvider.notifier);
+                            final notifier = ref.read(settingsProvider.notifier);
                             notifier.updateMqttAutoReconnect(value);
                           }),
                     ],
@@ -298,7 +298,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> with WidgetsBinding
 
   Future<void> saveSettings() async {
     final prefs = SharedPreferencesAsync();
-    final settings = ref.read(settingsNotifierProvider);
+    final settings = ref.read(settingsProvider);
     talker.debug("Saving settings. clockType: ${settings.clockType}, screensaverMode: ${settings.screensaverMode}");
     final sSettings = jsonEncode(settings.toJson());
     await prefs.setString("settings", sSettings);
@@ -310,9 +310,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> with WidgetsBinding
     final sSettings = await prefs.getString('settings');
     if (sSettings != null) {
       final jSettings = jsonDecode(sSettings);
-      final notifier = ref.read(settingsNotifierProvider.notifier);
+      final notifier = ref.read(settingsProvider.notifier);
       notifier.loadFromJson(jSettings);
-      final settingsProv = ref.read(settingsNotifierProvider);
+      final settingsProv = ref.read(settingsProvider);
       
       talker.debug("Fetched settings. clockType: ${settingsProv.clockType}, screensaverMode: ${settingsProv.screensaverMode}");
       
