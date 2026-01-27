@@ -36,11 +36,11 @@ dependencies:
   android_wake_lock: ^1.0.5
   wakelock_plus: ^1.4.0
   shared_preferences: ^2.5.1
-  battery_plus: ^6.2.1
+  battery_plus: ^7.0.0
   mqtt_client: ^10.5.1
-  talker_flutter: ^4.6.10
+  talker_flutter: ^5.1.13
   gap: ^3.0.1
-  flutter_riverpod: ^2.6.1
+  flutter_riverpod: ^3.2.0
   flutter_inappwebview: ^6.1.5
   dropdown_search: ^6.0.2
   uuid: ^4.5.1
@@ -55,8 +55,8 @@ dev_dependencies:
   # activated in the `analysis_options.yaml` file located at the root of your
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
-  flutter_lints: ^5.0.0
-  custom_lint: ^0.7.3
+  flutter_lints: ^6.0.0
+  custom_lint: ^0.8.1
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
