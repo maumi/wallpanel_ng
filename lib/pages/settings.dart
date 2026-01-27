@@ -17,7 +17,7 @@ class SettingsPage extends ConsumerStatefulWidget {
   ConsumerState<SettingsPage> createState() => _SettingsPageState();
 }
 
-class _SettingsPageState extends ConsumerState<SettingsPage> {
+class _SettingsPageState extends ConsumerState<SettingsPage> with WidgetsBindingObserver {
   final TextEditingController _mqttHostController = TextEditingController();
   final TextEditingController _mqttPortController = TextEditingController();
   final TextEditingController _mqttUserController = TextEditingController();
@@ -33,6 +33,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   @override
   void initState() {
     super.initState();
+    // Pause screensaver timer when settings page is opened
+    pauseScreensaverTimer();
     fetchSettings();
     final notifier = ref.read(settingsNotifierProvider.notifier);
     _mqttHostController
@@ -58,6 +60,21 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       var iTime = int.tryParse(_screensaverInactiveTimeController.text);
       notifier.updateScreensaverInactiveTime(iTime);
     });
+  }
+
+  @override
+  void dispose() {
+    // Resume screensaver timer when settings page is closed
+    resumeScreensaverTimer();
+    _mqttHostController.dispose();
+    _mqttPortController.dispose();
+    _mqttUserController.dispose();
+    _mqttPasswordController.dispose();
+    _mqttTopicController.dispose();
+    _mqttIntervalController.dispose();
+    _urlController.dispose();
+    _screensaverInactiveTimeController.dispose();
+    super.dispose();
   }
 
   @override

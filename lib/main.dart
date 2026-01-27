@@ -89,6 +89,11 @@ class _MyHomePageState extends ConsumerState<MyHomePage> with WidgetsBindingObse
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    // Register screensaver timer callbacks
+    setScreensaverTimerCallbacks(
+      startCallback: _startScreensaverTimer,
+      stopCallback: _stopScreensaverTimer,
+    );
     // Start screensaver timer on app launch
     _startScreensaverTimer();
     _recordUserActivity();
