@@ -40,7 +40,7 @@ dependencies:
   mqtt_client: ^10.5.1
   talker_flutter: ^5.1.13
   gap: ^3.0.1
-  flutter_riverpod: ^3.1.0
+  flutter_riverpod: ^3.2.1
   riverpod_annotation: ^4.0.0
   flutter_inappwebview: ^6.1.5
   dropdown_search: ^6.0.2
