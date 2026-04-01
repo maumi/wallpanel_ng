@@ -35,7 +35,7 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   android_wake_lock: ^1.0.5
   wakelock_plus: ^1.4.0
-  shared_preferences: ^2.5.1
+  shared_preferences: ^2.5.5
   battery_plus: ^7.0.0
   mqtt_client: ^10.5.1
   talker_flutter: ^5.1.14
