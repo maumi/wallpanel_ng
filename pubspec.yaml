@@ -38,7 +38,7 @@ dependencies:
   shared_preferences: ^2.5.1
   battery_plus: ^7.0.0
   mqtt_client: ^10.5.1
-  talker_flutter: ^5.1.14
+  talker_flutter: ^5.1.16
   gap: ^3.0.1
   flutter_riverpod: ^3.1.0
   riverpod_annotation: ^4.0.2
